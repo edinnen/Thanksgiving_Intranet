@@ -1,0 +1,87 @@
+
+.settings-view {
+	section {
+		padding: 40px;
+	}
+	
+	.status {
+		.item {
+			position: relative;
+			display: inline-block;
+			padding: 0 0 0 45px;
+			margin: 0 20px 10px 0;
+			min-width: 80px;
+
+			.icon {
+				width: 35px;
+				height: 35px;
+				position: absolute;
+				top: 0;
+				left: 0;
+			}
+
+			h4 {
+				padding: 0;
+				margin: 0;
+			}
+		}
+	}
+
+	.field.current-user {
+		.text {
+			padding: 14px 14px 14px 0px;
+
+			.user {
+				border: 0;
+				position: relative;
+
+				.thumbnail {
+					@include animate();
+					position: absolute;
+					display: block;
+					top: -14px;
+					left: 0;
+					max-width: 40px;
+					border: 2px solid transparent;
+					border-radius: 50%;
+				}
+
+				.user-name {
+					padding: 2px 14px 2px 55px;
+				}
+
+				&[href]:hover {
+					.thumbnail {
+						cursor: pointer;
+						border-color: $turquoise;
+					}
+				}
+			}
+		}
+	}
+
+	.field.pusher-connections {
+		.connection.me {
+			font-weight: bold;
+		}
+	}
+
+	@include responsive( $bp_medium ){
+		section {
+			padding: 20px;
+		}
+	}
+}
+
+
+.debugger-view {
+	section {
+		padding: 40px;
+	}
+
+	@include responsive( $bp_medium ){
+		section {
+			padding: 20px;
+		}
+	}
+}

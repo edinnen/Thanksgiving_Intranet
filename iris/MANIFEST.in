@@ -1,0 +1,2 @@
+include mopidy_iris/ext.conf
+recursive-include mopidy_iris/static *

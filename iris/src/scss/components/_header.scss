@@ -1,0 +1,85 @@
+
+main {
+	header {
+		padding: 14px 20px;
+		background: #EEEEEE;
+		line-height: 24px;
+		box-sizing: border-box;
+
+		h1 {
+			font-size: 22px;
+			font-weight: 100;
+			display: inline-block;
+		}
+
+		.icon {
+			display: inline-block;
+			padding-right: 14px;
+			height: 16px;
+		}
+
+		.options {
+			position: absolute;
+			top: 0;
+			right: 10px;
+
+			.context-menu-trigger {
+				display: none;
+				font-size: 18px;
+				padding: 16px 14px;
+			}
+
+			.button,
+			button {
+				background: transparent;
+				font-size: 14px;
+				font-weight: 600;
+				padding: 13px 10px;
+				margin: 0;
+				line-height: 24px;
+				text-transform: uppercase;
+				min-width: 0;
+				border: 0;
+				color: #000000;
+
+				&:active {
+					background: rgba(0,0,0,0.15);
+				}
+			}
+		}
+
+		&.overlay {
+			position: absolute;
+			top: 0;
+			left: 0;
+			width: 100%;
+			background: rgba(0,0,0,0.1);
+			color: $white;
+			z-index: 95;
+
+			.icon {
+				-webkit-filter: invert(1);
+				-moz-filter: invert(1);
+				filter: invert(1);
+			}
+		}
+
+		@include responsive( $bp_medium ){
+			.icon {
+				visibility: hidden;
+			}
+
+			.options {
+				right: 0;
+
+				.context-menu-trigger {
+					display: block;
+				}
+
+				.items {
+					display: none;
+				}
+			}
+		}
+	}
+}
