@@ -1,8 +1,7 @@
-# GoDoRP
-GoDoRP (Golang, Docker, React, Postgres) project starter.
+# Thanksgiving Intranet 
+Thanksgiving intranet server. Uses Golang, Docker, React, and Postgres.
 
 ## Features
-* Start a project with one command on any computer with docker-compose installed
 * Dev mode features hot reloading on code changes for both the GoLang backend and React frontend (no need to rebuild containers while coding)
 * Production mode features optimized static React frontend and binary goLang backend
 * Production images built by passing a single arg option (images can then run on any computer with Docker)
