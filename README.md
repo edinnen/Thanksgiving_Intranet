@@ -8,7 +8,6 @@ Thanksgiving intranet server. Uses Golang, Docker, React, and Postgres.
 
 ## Benefits
 * Dev enviroment is the same as production enviroment
-* Quickly get your GoDoRP project off the ground
 * Forking the repo allows for customization of the template for your prefereances
 
 ## Getting started:
