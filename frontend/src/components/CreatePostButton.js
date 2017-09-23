@@ -6,7 +6,7 @@ import Urls from '../util/Urls.js';
 class CreatePostButton extends Component {
   constructor(props) {
     super(props);
-    this.state = { showModal: false, author: '', message: '', isLoading: false, errors: [] };
+    this.state = { showModal: false, members: '', entry: '', isLoading: false, errors: [] };
   }
 
   close() {
@@ -25,29 +25,29 @@ class CreatePostButton extends Component {
 
   checkInput() {
     const errors = [];
-    if (this.state.author.length === 0) {
-      errors.push('Author cannot be blank.');
+    if (this.state.members.length === 0) {
+      errors.push('Members field cannot be blank.');
     }
 
-    if (this.state.message.length === 0) {
-      errors.push('Message cannot be blank.');
+    if (this.state.entry.length === 0) {
+      errors.push('Entry cannot be blank.');
     }
 
     return errors;
   }
 
   createPost() {
-    const { author, message } = this.state;
+    const { members, entry } = this.state;
     this.setState({ isLoading: true, errors: [] });
     const errors = this.checkInput();
     if (errors.length === 0) {
       axios.post(`${Urls.api}/posts`, {
-        Author: author,
-        Message: message,
+        Members: members,
+        Entry: entry,
       })
         .then((res) => {
           this.props.addPost(res.data);
-          this.setState({ isLoading: false, author: '', message: '', showModal: false, errors: [] });
+          this.setState({ isLoading: false, members: '', entry: '', showModal: false, errors: [] });
         },
       )
         .catch((err) => {
@@ -85,21 +85,21 @@ class CreatePostButton extends Component {
             {this.makeModalErrors()}
             <form>
               <FormGroup>
-                <ControlLabel>Author</ControlLabel>
+                <ControlLabel>Members</ControlLabel>
                 <FormControl
                   type="text"
-                  value={this.state.author}
-                  placeholder="Enter author name to display"
-                  onChange={this.handleChange.bind(this, 'author')}
+                  value={this.state.members}
+                  placeholder="Enter members name to display"
+                  onChange={this.handleChange.bind(this, 'members')}
                 />
               </FormGroup>
               <FormGroup>
-                <ControlLabel>Message</ControlLabel>
+                <ControlLabel>Entry</ControlLabel>
                 <FormControl
                   type="text"
-                  value={this.state.message}
-                  placeholder="Enter message to display"
-                  onChange={this.handleChange.bind(this, 'message')}
+                  value={this.state.entry}
+                  placeholder="Enter entry to display"
+                  onChange={this.handleChange.bind(this, 'entry')}
                 />
               </FormGroup>
             </form>

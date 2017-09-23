@@ -45,8 +45,8 @@ func deletePostHandler(w http.ResponseWriter, r *http.Request, ps httprouter.Par
 func updatePostHandler(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	setCors(w)
 	type body struct {
-		Author  string
-		Message string
+		Members  string
+		Entry string
 	}
 	var updates body
 	decoder := json.NewDecoder(r.Body)
@@ -56,8 +56,8 @@ func updatePostHandler(w http.ResponseWriter, r *http.Request, ps httprouter.Par
 
 	var updatedPost database.Post
 	database.DB.Where("ID = ?", ps.ByName("postId")).First(&updatedPost)
-	updatedPost.Author = updates.Author
-	updatedPost.Message = updates.Message
+	updatedPost.Members = updates.Members
+	updatedPost.Entry = updates.Entry
 	database.DB.Save(&updatedPost)
 	res, err := json.Marshal(updatedPost)
 	if err != nil {

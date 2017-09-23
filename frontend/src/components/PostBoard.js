@@ -27,7 +27,7 @@ class PostBoard extends Component {
         addError={this.addError.bind(this)}
         clearErrors={this.clearErrors.bind(this)}
       />,
-    );
+    ).reverse();
   }
 
   makeError() {
@@ -46,8 +46,8 @@ class PostBoard extends Component {
         <Table striped bordered condensed hover>
           <thead>
             <tr>
-              <th>Author</th>
-              <th>Message</th>
+              <th>Members</th>
+              <th>Entry</th>
               <th />
             </tr>
           </thead>

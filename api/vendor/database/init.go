@@ -11,8 +11,8 @@ var err error
 
 type Post struct {
 	gorm.Model
-	Author  string
-	Message string
+	Members  string
+	Entry string
 }
 
 func addDatabase(dbname string) error {
@@ -49,7 +49,7 @@ func Init() (*gorm.DB, error) {
 		DB.CreateTable(&Post{})
 	}
 
-	testPost := Post{Author: "Dorper", Message: "GoDoRP is Dope"}
+	testPost := Post{Members: "Pat, Larry, Kylie, & Tich", Entry: "Survey in Fairy Glade. Total length to date 220m. Still goes. Getting near to bridge. FROM MAY 18TH 1997."}
 	DB.Create(&testPost)
 
 	return DB, err

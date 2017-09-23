@@ -65,10 +65,10 @@ class PostRow extends Component {
     const { post } = this.props;
     return (
       <tr>
-        <td>{post.Author}</td>
-        <td>{post.Message}</td>
+        <td>{post.Members}</td>
+        <td>{post.Entry}</td>
         <td>
-          {this.makeEditButton()}
+          {/*this.makeEditButton()*/}
           {this.makeDeleteButton()}
         </td>
       </tr>
@@ -78,8 +78,8 @@ class PostRow extends Component {
 
 PostRow.propTypes = {
   post: PropTypes.shape({
-    Author: PropTypes.string.isRequired,
-    Message: PropTypes.string.isRequired,
+    Members: PropTypes.string.isRequired,
+    Entry: PropTypes.string.isRequired,
     ID: PropTypes.number.isRequired,
   }),
   removePost: PropTypes.func.isRequired,
