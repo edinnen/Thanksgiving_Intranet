@@ -7,7 +7,7 @@ import PostBoard from './PostBoard.js';
 import CreatePostButton from './CreatePostButton.js';
 import TopNavbar from './TopNavbar.js';
 
-class App extends Component {
+class Logbook extends Component {
   constructor(props) {
     super(props);
     this.state = {
@@ -79,4 +79,4 @@ class App extends Component {
   }
 }
 
-export default App;
+export default Logbook;

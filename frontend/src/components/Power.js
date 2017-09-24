@@ -3,7 +3,7 @@ import { Panel } from 'react-bootstrap/lib';
 import Style from '../util/Style.js';
 import TopNavbar from './TopNavbar.js';
 
-class Home extends Component {
+class Power extends Component {
   constructor(props) {
     super(props);
     this.state = {
@@ -11,7 +11,6 @@ class Home extends Component {
       errors: [],
     };
   }
-
   render() {
     const { windowWidth } = this.state;
     let width;
@@ -35,11 +34,11 @@ class Home extends Component {
       <div>
         <TopNavbar />
         <Panel style={panelStyle} bsStyle="primary">
-          <h2>Welcome to the Thanksgiving Cabin Intranet!</h2>
+          <h2>Thanksgiving Cabin Power Statistics</h2>
         </Panel>
       </div>
     );
   }
 }
 
-export default Home;
+export default Power;
