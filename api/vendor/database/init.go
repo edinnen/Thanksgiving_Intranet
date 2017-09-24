@@ -13,6 +13,7 @@ type Post struct {
 	gorm.Model
 	Members  string
 	Entry string
+	Datetime string
 }
 
 func addDatabase(dbname string) error {
@@ -48,8 +49,8 @@ func Init() (*gorm.DB, error) {
 	if !DB.HasTable(&Post{}) {
 		DB.CreateTable(&Post{})
 	}
-
-	testPost := Post{Members: "Pat, Larry, Kylie, & Tich", Entry: "Survey in Fairy Glade. Total length to date 220m. Still goes. Getting near to bridge. FROM MAY 18TH 1997."}
+	
+	testPost := Post{Members: "Pat, Larry, Kylie, & Tich", Entry: "Survey in Fairy Glade. Total length to date 220m. Still goes. Getting near to bridge.", Datetime: "18/05/1997"}
 	DB.Create(&testPost)
 
 	return DB, err

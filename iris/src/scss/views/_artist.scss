@@ -1,0 +1,142 @@
+
+.artist-view {
+	.intro {
+		position: relative;
+		@include clearfix();
+		margin-bottom: 40px;
+
+		.parallax {
+			position: absolute;
+			z-index: 0;
+			top: 0;
+			right: 0;
+			bottom: 0;
+			left: 0;
+			height: auto;
+		}
+
+		.liner {
+			position: relative;
+			z-index: 1;
+			padding: 20vh 40px 0 260px;
+
+			.thumbnail {
+				position: absolute;
+				z-index: 2;
+				left: 40px;
+				bottom: 20px;
+				max-width: 184px;
+
+				.image {
+					background-color: $darkest_grey;
+				}
+			}
+
+			h1 {
+				color: #FFFFFF;
+				padding-bottom: 25px;
+			}
+
+			.actions {
+				padding-bottom: 15px;
+			}
+
+			.sub-views {
+				color: #FFFFFF;
+
+				.option {
+					display: inline-block;
+					padding: 8px 0;
+					margin-right: 25px;
+					font-size: 18px;
+					font-weight: 400;
+					border-bottom: 4px solid transparent;
+					cursor: pointer;
+
+					&.active {
+						border-color: $off_white;
+					}
+
+					&:not(.active):hover {
+						border-color: rgba(255,255,255,0.2);
+					}
+				}
+			}
+		}
+
+	}
+
+	.body.about {		
+		@include clearfix();
+		padding: 0 40px 40px 40px;
+
+		.biography {
+			padding-left: 40px;
+			box-sizing: border-box;
+
+			.biography-text {
+				overflow-wrap: break-word;
+			}			
+		}
+	}
+
+	@include responsive( $bp_medium ){
+		.intro {
+			margin-bottom: 20px;
+
+			.parallax {
+				canvas {
+					@include blur(5px);
+				}
+			}
+
+			.liner {
+				text-align: center;
+				padding-left: 20px;
+				padding-right: 20px;
+				padding-top: 10vh;
+
+				.thumbnail {
+					position: static;
+					float: none;
+					margin: 0 auto 20px;
+					max-width: 65%;
+				}
+
+				.sub-views {
+					margin-left: 0;
+
+					.option {
+						margin: 0 8px;
+					}
+				}
+			}
+		}
+		.body {
+			&.overview {
+				.col.w70 {
+					width: 100%;
+				}
+				.col.w5,
+				.related-artists {
+					display: none;
+				}
+			}
+
+			&.about {
+				padding: 0 20px 20px 20px;
+
+				.col.w40,
+				.col.w60 {
+					@include clearfix();
+					width: 100%;
+					float: none;
+				}
+				
+				.biography {
+					padding-left: 0;
+				}
+			}
+		}
+	}
+}

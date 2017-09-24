@@ -48,6 +48,7 @@ class PostBoard extends Component {
             <tr>
               <th>Members</th>
               <th>Entry</th>
+              <th>Date</th>
               <th />
             </tr>
           </thead>

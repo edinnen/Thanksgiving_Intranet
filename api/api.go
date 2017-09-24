@@ -47,6 +47,7 @@ func updatePostHandler(w http.ResponseWriter, r *http.Request, ps httprouter.Par
 	type body struct {
 		Members  string
 		Entry string
+		Datetime string
 	}
 	var updates body
 	decoder := json.NewDecoder(r.Body)
@@ -58,6 +59,7 @@ func updatePostHandler(w http.ResponseWriter, r *http.Request, ps httprouter.Par
 	database.DB.Where("ID = ?", ps.ByName("postId")).First(&updatedPost)
 	updatedPost.Members = updates.Members
 	updatedPost.Entry = updates.Entry
+	updatedPost.Datetime = updates.Datetime
 	database.DB.Save(&updatedPost)
 	res, err := json.Marshal(updatedPost)
 	if err != nil {

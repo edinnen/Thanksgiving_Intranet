@@ -6,7 +6,8 @@ import Urls from '../util/Urls.js';
 class CreatePostButton extends Component {
   constructor(props) {
     super(props);
-    this.state = { showModal: false, members: '', entry: '', isLoading: false, errors: [] };
+    var d = new Date();
+    this.state = { showModal: false, members: '', entry: '', datetime: d.toLocaleDateString(), isLoading: false, errors: [] };
   }
 
   close() {
@@ -37,17 +38,19 @@ class CreatePostButton extends Component {
   }
 
   createPost() {
-    const { members, entry } = this.state;
+    const { members, entry, datetime } = this.state;
     this.setState({ isLoading: true, errors: [] });
     const errors = this.checkInput();
+    var d = new Date();
     if (errors.length === 0) {
       axios.post(`${Urls.api}/posts`, {
         Members: members,
         Entry: entry,
+        Datetime: datetime,
       })
         .then((res) => {
           this.props.addPost(res.data);
-          this.setState({ isLoading: false, members: '', entry: '', showModal: false, errors: [] });
+          this.setState({ isLoading: false, members: '', entry: '', datetime: d.toLocaleDateString(), showModal: false, errors: [] });
         },
       )
         .catch((err) => {
@@ -76,7 +79,7 @@ class CreatePostButton extends Component {
     const { showModal, isLoading } = this.state;
     return (
       <div>
-        <Button bsStyle="primary" onClick={this.open.bind(this)}>Create Post</Button>
+        <Button bsStyle="primary" onClick={this.open.bind(this)}>Add Log Entry</Button>
         <Modal show={showModal} onHide={this.close.bind(this)}>
           <Modal.Header closeButton>
             <Modal.Title>Create Post</Modal.Title>
