@@ -6,9 +6,8 @@ FROM golang
 ARG app_env
 ENV APP_ENV $app_env
 
-# it is okay to leave user/GoDoRP as long as you do not want to share code with other libraries
-COPY . /go/src/github.com/user/GoDoRP/api
-WORKDIR /go/src/github.com/user/GoDoRP/api
+COPY . /go/src/github.com/user/Thanksgiving_Intranet/api
+WORKDIR /go/src/github.com/user/Thanksgiving_Intranet/api
 
 # added vendor services will need to be included here
 RUN go get ./vendor/database
@@ -25,5 +24,5 @@ CMD if [ ${APP_ENV} = production ]; \
 	go get github.com/pilu/fresh && \
 	fresh; \
 	fi
-	
+
 EXPOSE 8080

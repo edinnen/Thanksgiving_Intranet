@@ -2,15 +2,49 @@ import React, { Component } from 'react';
 import { Panel } from 'react-bootstrap/lib';
 import Style from '../util/Style.js';
 import TopNavbar from './TopNavbar.js';
+import axios from 'axios';
+import Urls from '../util/Urls.js';
+import RTChart from 'react-rt-chart';
 
 class Power extends Component {
   constructor(props) {
     super(props);
     this.state = {
       windowWidth: window.innerWidth,
+      data: [], // The power stats data
       errors: [],
     };
   }
+
+  componentDidMount() {
+    setInterval(() => this.forceUpdate(), 1000);
+  }
+
+  updateData() {
+    axios.post(`${Urls.api}/power`)
+      .then((res) => {
+      },
+    )
+      .catch(() => {
+        this.setState({ errors: ['Error in power stats API post'] });
+      },
+    );
+
+    axios.get(`${Urls.api}/power`)
+      .then((res) => {
+        this.setState({ data: res.data });
+      },
+    )
+      .catch(() => {
+        this.setState({ errors: ['Error in backend power stats API get'] });
+      },
+    );
+  }
+
+  getRandomValue() {
+    return Math.floor(Math.random()*5);
+  }
+
   render() {
     const { windowWidth } = this.state;
     let width;
@@ -24,6 +58,17 @@ class Power extends Component {
       width = '1127px';
     }
 
+    var data = {
+      date: new Date(),
+      Solar: this.getRandomValue(),
+      Pelton: this.getRandomValue(),
+      Battery: this.getRandomValue()
+    };
+
+    var flow = {
+      duration: 200
+    };
+
     const panelStyle = {
       width,
       margin: 'auto',
@@ -34,7 +79,10 @@ class Power extends Component {
       <div>
         <TopNavbar />
         <Panel style={panelStyle} bsStyle="primary">
-          <h2>Thanksgiving Cabin Power Statistics</h2>
+        <RTChart
+            flow={flow}
+            fields={['Solar','Pelton','Battery']}
+            data={data} />
         </Panel>
       </div>
     );
