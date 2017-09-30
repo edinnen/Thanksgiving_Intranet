@@ -29,3 +29,11 @@ Recieve request for data stream over serial
 continue to take power readings at high rate
 stream current state to RPi at low baud (3 sec?)
 
+==File Structure==
+Files are named based on the time
+New files:
+    On startup
+    When load connected (big switch turned)
+    When load disconnected
+    When file size reaches some number
+
