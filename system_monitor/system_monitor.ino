@@ -23,7 +23,7 @@ stuartdehaas@gmail.com
 #define GREEN_LED_PIN 4
 
 // Global variable containing the current filename
-char filename[25] = "Poop.csv";
+char *filename = malloc(NAME_LENGTH);
 
 const char NUM_SOURCES = 4; //number of voltage/current sources
 // System Order: Batt, Solar, Hydro, Load
@@ -51,52 +51,67 @@ const int chipSelect = 0;
 // the logging file
 File TGC_logfile;
 
-void readVoltage(float *voltages[]){
+float* readVoltage(){
+    static float voltages[4] = {0, 1, 0, 0};
     #if TEST
-    for(int i=0; i++; i<NUM_SOURCES){
-        *voltages[i] = 13.8+i;
-    }
-        return;
+        Serial.println("readVoltage");
+        for(int i=0; i<NUM_SOURCES; i++){
+            voltages[i] = 13.8+i;
+        }
+        //return voltages;
     #endif
 
-    for(int i=0; i++; i<NUM_SOURCES){
-        *voltages[i] =  analogRead(VOLT_PIN[i]) * VOLT_MULTI[i];
+    for(int i=0; i<NUM_SOURCES; i++){
+        voltages[i] =  analogRead(VOLT_PIN[i]) * VOLT_MULTI[i];
     }
-    return;
+    return voltages;
 }//readVoltage
 
-void readAmp(float *amps[]){
+float* readAmp(){
+    static float amps[4] = {0,0,0,0};
     #if TEST
-    for(int i=0; i++; i<NUM_SOURCES){
-        *amps[i] = 5.4+i;
-    }
-        return;
+        Serial.println("readAmp");
+        for(int i=0; i<NUM_SOURCES; i++){
+            amps[i] = 5.4+i;
+        }
+        //return amps;
     #endif
 
-    for(int i=0; i++; i<NUM_SOURCES){
-        *amps[i] =  analogRead(AMP_PIN[i]) * AMP_MULTI[i];
+    for(int i=0; i<NUM_SOURCES; i++){
+        amps[i] =  analogRead(AMP_PIN[i]) * AMP_MULTI[i];
     }
-    return;
+    return amps;
 }//readAmp
 
-void readTemp(float *temps[]){
+float* readTemp(){
+    static float temps[3] = {0,0,0};
     #if TEST
-    for(int i=0; i++; i<NUM_SOURCES){
-        *temps[i] = 20.3+i;
-    }
-        return;
+        Serial.println("readTemp");
+        for(int i=0; i<NUM_SOURCES; i++){
+            temps[i] = 20.3+i;
+        }
+        return temps;
     #endif
 
-    for(int i=0; i++; i<NUM_TEMPS){
+    for(int i=0; i<NUM_TEMPS; i++){
         //do something
     }
-    return;
+    return temps;
 }//readTemp
 
-char readTime(){
+char* readTime(){
     // TO DO
-    return "2017_09_30-12-43-33";
-}
+    static char *time;
+    #if TEST
+        Serial.println("readTime");
+    #endif
+        int randNumber = random(10);
+        time = "2017_09_30-12-43-3";
+
+        //strcat(time, str(randNumber));
+
+    return time;
+}//readTime
 
 int writeSD(float volt[], float amp[], float temp[], char time[], float power){
     // TO DO
@@ -111,9 +126,17 @@ void readSD(char *data[]){
 
 void newFile(){
 
-    char newName[] = "SHIT";
-    strcat(newName, ".csv");
+    char *temp = (char*)malloc(sizeof(char)*NAME_LENGTH);
+
+    memcpy(temp, readTime(), sizeof(char)*NAME_LENGTH);
+
+    strcat(temp, ".csv");
+    filename = temp;
+#if TEST
+    return;
+#endif
     
+    /*
     TGC_logfile.close();
     TGC_logfile = SD.open(newName, FILE_WRITE);
 
@@ -122,6 +145,7 @@ void newFile(){
         TGC_logfile.print("Created: ");
         TGC_logfile.println(newName);
     }
+    */
 }
 
 void standby(){
@@ -130,16 +154,57 @@ void standby(){
     float ampReadings[4];
     float tempReadings[3];
 
-    readVoltage(voltReadings[]);
+    //readVoltage(voltReadings);
 
     
 }//standby
+
+void error(char mess[]){
+    // TO DO
+    Serial.print("Shit");
+}//error
+
+void printArray(float array[], int arraySize){
+    for(int i=0; i<arraySize; i++){
+        Serial.println(array[i]);
+    }
+}
+
+void test(){
+
+    float *voltages, *amps, *temps;
+    char *time;
+    voltages = readVoltage();
+    amps = readAmp();
+    temps = readTemp();
+    time = readTime();
+    printArray(voltages, 4);
+    printArray(amps, 4);
+    printArray(temps, 3);
+    Serial.println(time);
+    int timeAdd = time;
+    Serial.println(timeAdd);
+    Serial.println(filename);
+    int fileAdd = filename;
+    Serial.println(fileAdd);
+    newFile();
+    Serial.println(filename);
+    fileAdd = filename;
+    Serial.println(fileAdd);
+    delay(1000);
+
+    return;
+}
 
 void setup() {
 
     Serial.begin(9600);
     Serial.println();
 
+    pinMode(RED_LED_PIN, OUTPUT);
+    pinMode(GREEN_LED_PIN, OUTPUT);
+
+#if !(TEST)
     // initialize the SD card
     Serial.print("Initializing SD card...");
     // make sure that the default chip select pin is set to
@@ -152,19 +217,16 @@ void setup() {
     }
     Serial.println("card initialized.");
 
-    // create a new file
-    char filename[] = "LOGGER00.CSV";
-    for (uint8_t i = 0; i < 100; i++) {
-        filename[6] = i/10 + '0';
-        filename[7] = i%10 + '0';
-        if (! SD.exists(filename)) {
-            // only open a new file if it doesn't exist
-            logfile = SD.open(filename, FILE_WRITE); 
-            break;  // leave the loop!
-        }
-    }
 
-    if (! logfile) {
+
+    // create a new file
+    if (! SD.exists(filename)) {
+        // only open a new file if it doesn't exist
+        TGC_logfile = SD.open(filename, FILE_WRITE); 
+    }
+    
+
+    if (! TGC_logfile) {
         error("couldnt create file");
     }
 
@@ -174,12 +236,14 @@ void setup() {
     // connect to RTC
     Wire.begin();  
     if (!RTC.begin()) {
-        logfile.println("RTC failed");
+        TGC_logfile.println("RTC failed");
     Serial.println("RTC failed");
     }
+#endif
 
 }//setup
 
 void loop() {
     // TO DO
+    test();
 }
