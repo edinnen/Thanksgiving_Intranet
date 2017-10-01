@@ -17,17 +17,24 @@ stuartdehaas@gmail.com
 
 #define AREF_VOLT 4.096 //Using an external voltage reference (LM4040)
 #define TEST 1 //Used during testing to enable/disable certain functionality
+#define NAME_LENGTH 24 // Length of the filenames
+
+#define RED_LED_PIN 3
+#define GREEN_LED_PIN 4
+
+// Global variable containing the current filename
+char filename[25] = "Poop.csv";
 
 const char NUM_SOURCES = 4; //number of voltage/current sources
 // System Order: Batt, Solar, Hydro, Load
-const char[] VOLT_PIN = [0, 1, 2, 3];
-const char[] VOLT_MULTI = [4, 5, 6, 7]; //Voltage divider multiplier
-const char[] AMP_PIN = [8, 9, 10, 11];
-const char[] AMP_MULTI = [1, 4, 4, 3]; //Number of wire passes
+const char VOLT_PIN[] = {0, 1, 2, 3};
+const char VOLT_MULTI[] = {3.8764, 7.3357, 12.3537, 3.8764}; //Voltage divider multiplier
+const char AMP_PIN[] = {8, 9, 10, 11};
+const char AMP_MULTI[] = {1, 4, 4, 3}; //Number of wire passes
 
 //Address of temperature sensors
 const int NUM_TEMPS = 3;
-const int[] TEMP_ADDRESS[1234, 5678, 9101];
+const int TEMP_ADDRESS[] = {1234, 5678, 9101};
 
 // Intervals used between readings/SD writes
 float STANDBY_INTERVAL = 3;
@@ -44,34 +51,77 @@ const int chipSelect = 0;
 // the logging file
 File TGC_logfile;
 
-float readVoltage(char PIN){
+void readVoltage(float *voltages[]){
+    #if TEST
+    for(int i=0; i++; i<NUM_SOURCES){
+        *voltages[i] = 13.8+i;
+    }
+        return;
+    #endif
+
+    for(int i=0; i++; i<NUM_SOURCES){
+        *voltages[i] =  analogRead(VOLT_PIN[i]) * VOLT_MULTI[i];
+    }
+    return;
+}//readVoltage
+
+void readAmp(float *amps[]){
+    #if TEST
+    for(int i=0; i++; i<NUM_SOURCES){
+        *amps[i] = 5.4+i;
+    }
+        return;
+    #endif
+
+    for(int i=0; i++; i<NUM_SOURCES){
+        *amps[i] =  analogRead(AMP_PIN[i]) * AMP_MULTI[i];
+    }
+    return;
+}//readAmp
+
+void readTemp(float *temps[]){
+    #if TEST
+    for(int i=0; i++; i<NUM_SOURCES){
+        *temps[i] = 20.3+i;
+    }
+        return;
+    #endif
+
+    for(int i=0; i++; i<NUM_TEMPS){
+        //do something
+    }
+    return;
+}//readTemp
+
+char readTime(){
     // TO DO
-    return 13.8;
+    return "2017_09_30-12-43-33";
 }
 
-float readAmp(char PIN){
-    // TO DO
-    return 4.1;
-}
-
-float readTemp(int address){
-    // TO DO
-    return 22.1;
-}
-
-char[] readTime(int address){
-    // TO DO
-    return "2017-09-30:12:43:33";
-}
-
-int writeSD(float[] volt, float[] amp, float[] temp, char[] time, float power){
+int writeSD(float volt[], float amp[], float temp[], char time[], float power){
     // TO DO
     return 0;
 }
 
-char[] readSD(){
+void readSD(char *data[]){
     // TO DO
-    return "0.1, 13.8, 20.0, stuff";
+    *data = "0.1, 13.8, 20.0, stuff";
+    return;
+}
+
+void newFile(){
+
+    char newName[] = "SHIT";
+    strcat(newName, ".csv");
+    
+    TGC_logfile.close();
+    TGC_logfile = SD.open(newName, FILE_WRITE);
+
+    if(TGC_logfile){
+        TGC_logfile.println("#TGC Power System");
+        TGC_logfile.print("Created: ");
+        TGC_logfile.println(newName);
+    }
 }
 
 void standby(){
@@ -80,19 +130,12 @@ void standby(){
     float ampReadings[4];
     float tempReadings[3];
 
-    for(int i=0, i++, i<NUM_SORCES){
-        voltReadings[i] = readVoltage(VOLT_PIN[i]);
-        ampReadings[i] = readAmp(AMP_PIN[i]);
-    }
+    readVoltage(voltReadings[]);
 
-    for(int i=0, i++, i<NUM_TEMPS){
-        tempReadings[i] = readTemp(TEMP_ADDRESS[i]);
-    }
     
 }//standby
 
 void setup() {
-    //To-do
 
     Serial.begin(9600);
     Serial.println();
