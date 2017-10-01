@@ -14,16 +14,20 @@ stuartdehaas@gmail.com
 #include <SD.h>
 #include <Wire.h>
 #include "RTClib.h"
+#include <avr/sleep.h> //for sleeping
+#include <avr/wdt.h> //for waking up
 
 #define AREF_VOLT 4.096 //Using an external voltage reference (LM4040)
 #define TEST 1 //Used during testing to enable/disable certain functionality
-#define NAME_LENGTH 24 // Length of the filenames
+#define NAME_LENGTH 25 // Length of the filenames
+#define SERIAL_DELAY 5 // Delay after each serial output
 
 #define RED_LED_PIN 3
 #define GREEN_LED_PIN 4
 
 // Global variable containing the current filename
-char *filename = malloc(NAME_LENGTH);
+//char *filename = (char*)malloc(NAME_LENGTH);
+char filename[25];
 
 const char NUM_SOURCES = 4; //number of voltage/current sources
 // System Order: Batt, Solar, Hydro, Load
@@ -51,10 +55,30 @@ const int chipSelect = 0;
 // the logging file
 File TGC_logfile;
 
+ISR(WDT_vect){
+    // After interupt, the script goes here
+  wdt_disable();  // disable watchdog
+}
+
+void sleep(){  
+  // This is how we sleep
+  MCUSR = 0;                          // reset various flags
+  WDTCSR |= 0b00011000;               // see docs, set WDCE, WDE
+  WDTCSR =  0b01000000 | 0b100001;    // set WDIE, and appropriate delay
+// sleep bit patterns:
+//  1 second:  0b000110
+//  2 seconds: 0b000111
+//  4 seconds: 0b100000
+//  8 seconds: 0b100001
+  wdt_reset();
+  set_sleep_mode (SLEEP_MODE_PWR_DOWN);  
+  sleep_mode();            // now goes to Sleep and waits for the interrupt
+  } 
+
 float* readVoltage(){
     static float voltages[4] = {0, 1, 0, 0};
     #if TEST
-        Serial.println("readVoltage");
+        serialOut("readVoltage");
         for(int i=0; i<NUM_SOURCES; i++){
             voltages[i] = 13.8+i;
         }
@@ -70,7 +94,7 @@ float* readVoltage(){
 float* readAmp(){
     static float amps[4] = {0,0,0,0};
     #if TEST
-        Serial.println("readAmp");
+        serialOut("readAmp");
         for(int i=0; i<NUM_SOURCES; i++){
             amps[i] = 5.4+i;
         }
@@ -86,8 +110,8 @@ float* readAmp(){
 float* readTemp(){
     static float temps[3] = {0,0,0};
     #if TEST
-        Serial.println("readTemp");
-        for(int i=0; i<NUM_SOURCES; i++){
+        serialOut("readTemp");
+        for(int i=0; i<NUM_TEMPS; i++){
             temps[i] = 20.3+i;
         }
         return temps;
@@ -99,16 +123,20 @@ float* readTemp(){
     return temps;
 }//readTemp
 
-char* readTime(){
+void readTime(char *time){
     // TO DO
-    static char *time;
     #if TEST
-        Serial.println("readTime");
+        serialOut("readTime");
     #endif
-        int randNumber = random(10);
-        time = "2017_09_30-12-43-3";
+    //static char *time;
+    //char *temp;
 
-        //strcat(time, str(randNumber));
+    int randNumber = random(100);
+    sprintf(time, "%09d", randNumber);
+    //time = &temp;
+    //serialOut(time);
+
+    //strcat(time, str(randNumber));
 
     return time;
 }//readTime
@@ -126,27 +154,38 @@ void readSD(char *data[]){
 
 void newFile(){
 
-    char *temp = (char*)malloc(sizeof(char)*NAME_LENGTH);
+    char header[] = 
+        "#Thanksgiving Cabin Power System\n"
+        "#Timestamp,Battery Voltage,Solar Voltage,Hydro Voltage,Load Voltage,"
+        "Battery Amps, Solar Amps,Hydro Amps,Load Amps,Battery Energy State,"
+        "Outside Temp,Cabin Temp,Battery Temp\n";
 
-    memcpy(temp, readTime(), sizeof(char)*NAME_LENGTH);
-
+    char buff[NAME_LENGTH];
+    char *temp = buff;
+    readTime(temp);
     strcat(temp, ".csv");
-    filename = temp;
+    memcpy(filename, temp, sizeof(char)*NAME_LENGTH);
 #if TEST
     return;
 #endif
     
     /*
     TGC_logfile.close();
-    TGC_logfile = SD.open(newName, FILE_WRITE);
 
-    if(TGC_logfile){
-        TGC_logfile.println("#TGC Power System");
-        TGC_logfile.print("Created: ");
-        TGC_logfile.println(newName);
+    if (! SD.exists(filename)) {
+        // only open a new file if it doesn't exist
+        TGC_logfile = SD.open(filename, FILE_WRITE); 
     }
+
+    if (! TGC_logfile) {
+        error("couldnt create file");
+    }
+
+    Serial.print("Logging to: ");
+    serialOut(filename);
+
     */
-}
+}//newFile
 
 void standby(){
     // TO DO
@@ -161,45 +200,58 @@ void standby(){
 
 void error(char mess[]){
     // TO DO
-    Serial.print("Shit");
+    serialOut(mess);
+    digitalWrite(RED_LED_PIN, HIGH);
+    delay(500);
+    digitalWrite(GREEN_LED_PIN, HIGH);
+    delay(500);
 }//error
 
 void printArray(float array[], int arraySize){
     for(int i=0; i<arraySize; i++){
         Serial.println(array[i]);
+        Serial.flush();
+        //delay(SERIAL_DELAY);
     }
+}
+
+void serialOut(char output[]){
+#if TEST
+    Serial.println(output);
+    //delay(SERIAL_DELAY);
+    Serial.flush();
+#endif
+    return;
 }
 
 void test(){
 
+    char buff[25];
+    char *time = buff;
+
     float *voltages, *amps, *temps;
-    char *time;
     voltages = readVoltage();
     amps = readAmp();
     temps = readTemp();
-    time = readTime();
+    readTime(time);
     printArray(voltages, 4);
     printArray(amps, 4);
     printArray(temps, 3);
-    Serial.println(time);
-    int timeAdd = time;
-    Serial.println(timeAdd);
-    Serial.println(filename);
-    int fileAdd = filename;
-    Serial.println(fileAdd);
+    serialOut(time);
+    serialOut("Old filename:");
+    serialOut(filename);
     newFile();
-    Serial.println(filename);
-    fileAdd = filename;
-    Serial.println(fileAdd);
-    delay(1000);
-
+    serialOut("New filename:");
+    serialOut(filename);
+    //delay(100);
+    sleep();
     return;
 }
 
 void setup() {
 
     Serial.begin(9600);
-    Serial.println();
+    serialOut("");
 
     pinMode(RED_LED_PIN, OUTPUT);
     pinMode(GREEN_LED_PIN, OUTPUT);
@@ -209,35 +261,23 @@ void setup() {
     Serial.print("Initializing SD card...");
     // make sure that the default chip select pin is set to
     // output, even if you don't use it:
-    pinMode(10, OUTPUT);
+    pinMode(0, OUTPUT);
 
     // see if the card is present and can be initialized:
     if (!SD.begin(chipSelect)) {
         error("Card failed, or not present");
     }
-    Serial.println("card initialized.");
+    serialOut("card initialized.");
 
 
 
     // create a new file
-    if (! SD.exists(filename)) {
-        // only open a new file if it doesn't exist
-        TGC_logfile = SD.open(filename, FILE_WRITE); 
-    }
-    
-
-    if (! TGC_logfile) {
-        error("couldnt create file");
-    }
-
-    Serial.print("Logging to: ");
-    Serial.println(filename);
-
+    newFile();
     // connect to RTC
     Wire.begin();  
     if (!RTC.begin()) {
         TGC_logfile.println("RTC failed");
-    Serial.println("RTC failed");
+    serialOut("RTC failed");
     }
 #endif
 
