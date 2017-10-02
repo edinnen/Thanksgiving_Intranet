@@ -15,8 +15,11 @@ stuartdehaas@gmail.com
 #include <Wire.h>
 #include "RTClib.h"
 #include <avr/sleep.h> //for sleeping
+#include <avr/power.h> //for sleeping deep
 #include <avr/wdt.h> //for waking up
 
+#define FALSE 0
+#define TRUE 1
 #define AREF_VOLT 4.096 //Using an external voltage reference (LM4040)
 #define TEST 1 //Used during testing to enable/disable certain functionality
 #define NAME_LENGTH 25 // Length of the filenames
@@ -25,9 +28,13 @@ stuartdehaas@gmail.com
 #define RED_LED_PIN 3
 #define GREEN_LED_PIN 4
 
+// Flag is set by the watch dog timer (WDT)
+char WDT_FLAG = FALSE;
+
+
 // Global variable containing the current filename
 //char *filename = (char*)malloc(NAME_LENGTH);
-char filename[25];
+char filename[33];
 
 const char NUM_SOURCES = 4; //number of voltage/current sources
 // System Order: Batt, Solar, Hydro, Load
@@ -57,36 +64,30 @@ File TGC_logfile;
 
 ISR(WDT_vect){
     // After interupt, the script goes here
-  wdt_disable();  // disable watchdog
+  //wdt_disable();  // disable watchdog
+    WDT_FLAG = TRUE;
 }
 
 void sleep(){  
-  // This is how we sleep
-  MCUSR = 0;                          // reset various flags
-  WDTCSR |= 0b00011000;               // see docs, set WDCE, WDE
-  WDTCSR =  0b01000000 | 0b100001;    // set WDIE, and appropriate delay
-// sleep bit patterns:
-//  1 second:  0b000110
-//  2 seconds: 0b000111
-//  4 seconds: 0b100000
-//  8 seconds: 0b100001
-  wdt_reset();
-  set_sleep_mode (SLEEP_MODE_PWR_DOWN);  
-  sleep_mode();            // now goes to Sleep and waits for the interrupt
+    set_sleep_mode(SLEEP_MODE_PWR_DOWN);
+    sleep_enable();
+  
+    /* Now enter sleep mode. */
+    sleep_mode();
+  
+    /* The program will continue from here after the WDT timeout*/
+    sleep_disable(); /* First thing to do is disable sleep. */
+  
+    /* Re-enable the peripherals. */
+    power_all_enable();
   } 
 
 float* readVoltage(){
-    static float voltages[4] = {0, 1, 0, 0};
-    #if TEST
-        serialOut("readVoltage");
-        for(int i=0; i<NUM_SOURCES; i++){
-            voltages[i] = 13.8+i;
-        }
-        //return voltages;
-    #endif
+    static float voltages[4] = {0, 0, 0, 0};
+    serialOut("readVoltage");
 
     for(int i=0; i<NUM_SOURCES; i++){
-        voltages[i] =  analogRead(VOLT_PIN[i]) * VOLT_MULTI[i];
+        voltages[i] =  analogRead(VOLT_PIN[i]) * (AREF_VOLT/1024) * VOLT_MULTI[i];
     }
     return voltages;
 }//readVoltage
@@ -102,7 +103,7 @@ float* readAmp(){
     #endif
 
     for(int i=0; i<NUM_SOURCES; i++){
-        amps[i] =  analogRead(AMP_PIN[i]) * AMP_MULTI[i];
+        amps[i] =  analogRead(AMP_PIN[i]) * (AREF_VOLT/1024) * AMP_MULTI[i];
     }
     return amps;
 }//readAmp
@@ -125,11 +126,14 @@ float* readTemp(){
 
 void readTime(char *time){
     // TO DO
+
     #if TEST
         serialOut("readTime");
     #endif
     //static char *time;
     //char *temp;
+
+    //unixTime = now.unixtime();
 
     int randNumber = random(100);
     sprintf(time, "%09d", randNumber);
@@ -154,17 +158,45 @@ void readSD(char *data[]){
 
 void newFile(){
 
-    char header[] = 
+    // File format should be: UNIXTIME_yyyy-mm-ddThhmmss
+    // For example: 1506907892_2017-10-02T193101.csv
+    // which is: 2017/Oct/02 7:39:01pm
+    /*
+    int unix   = now.unixtime();
+    int year   = now.year();
+    int month  = now.month();
+    int day    = now.day();
+    int hour   = now.hour();
+    int minute = now.minute();
+    int second = now.second();
+    */
+    unsigned long unix   = 1506907891;
+    int year   = 2017;
+    int month  = 10;
+    int day    = 2;
+    int hour   = 19;
+    int minute = 31;
+    int second = 4;
+
+    char buff[580];
+    char *header = buff;
+    sprintf(header,
         "#Thanksgiving Cabin Power System\n"
+        "#Time is in UNIX Time which is the number of seconds since 1970-Jan-01\n"
+        "#To convert the date in cell 'A7' to an excel date serial number "
+        "in Vancover time use:\n"
+        "#=(A7/86400)+25569+(-7/24)\n"
+        "or Google it\n"
+        "Created: %04d-%02d-%02d at %02d:%02d:%02d or %010lu in UNIX time"
         "#Timestamp,Battery Voltage,Solar Voltage,Hydro Voltage,Load Voltage,"
         "Battery Amps, Solar Amps,Hydro Amps,Load Amps,Battery Energy State,"
-        "Outside Temp,Cabin Temp,Battery Temp\n";
+        "Outside Temp,Cabin Temp,Battery Temp\n", year, month, day, hour, minute, second, unix);
 
-    char buff[NAME_LENGTH];
-    char *temp = buff;
-    readTime(temp);
-    strcat(temp, ".csv");
-    memcpy(filename, temp, sizeof(char)*NAME_LENGTH);
+    sprintf(filename, "%010lu_%04d-%02d-%02dT%02d%02d%02d.csv", unix, year, month, day, hour, minute, second);
+
+    //readTime(temp);
+    //strcat(temp, ".csv");
+    //memcpy(filename, temp, sizeof(char)*NAME_LENGTH);
 #if TEST
     return;
 #endif
@@ -226,11 +258,14 @@ void serialOut(char output[]){
 
 void test(){
 
-    char buff[25];
-    char *time = buff;
+    char buff[25]; //Allocate memory for the 'time'
+    char *time = buff; //Create pointer to the allocated memory
+    float *voltages, *amps, *temps; //create pointers to point at data
 
-    float *voltages, *amps, *temps;
     voltages = readVoltage();
+    int voltAdd = voltages;
+    Serial.println(voltAdd);
+    delay(5);
     amps = readAmp();
     temps = readTemp();
     readTime(time);
@@ -243,7 +278,7 @@ void test(){
     newFile();
     serialOut("New filename:");
     serialOut(filename);
-    //delay(100);
+    //delay(2000);
     sleep();
     return;
 }
@@ -255,6 +290,22 @@ void setup() {
 
     pinMode(RED_LED_PIN, OUTPUT);
     pinMode(GREEN_LED_PIN, OUTPUT);
+
+    //Using an external voltage reference for increased accuracy
+    analogReference(EXTERNAL);
+    analogRead(0); //To help settle the ADC before taking readings
+
+    // WDT setup
+    cli(); //disable interrupts
+    wdt_reset();
+    // Enter 'Config mode'
+    WDTCSR |= (1<<WDCE) | (1<<WDE);
+
+    // Set interupts, reset on timeout, last 4 do time (1001 is 8sec)
+    WDTCSR = (1<<WDIE) | (0<<WDE) | (1<<WDP3) | (0<<WDP2) | (0<<WDP1) | (1<<WDP0);
+
+    sei(); //enable interupts
+  
 
 #if !(TEST)
     // initialize the SD card
@@ -286,4 +337,8 @@ void setup() {
 void loop() {
     // TO DO
     test();
+
+    if(WDT_FLAG == TRUE){
+        WDT_FLAG = FALSE;
+    }
 }
