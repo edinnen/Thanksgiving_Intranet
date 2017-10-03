@@ -13,7 +13,7 @@ stuartdehaas@gmail.com
 #include <SPI.h>
 #include <SD.h>
 #include <Wire.h>
-#include "RTClib.h"
+#include "RTClib.h" //Must be downloaded manually
 #include <avr/sleep.h> //for sleeping
 #include <avr/power.h> //for sleeping deep
 #include <avr/wdt.h> //for waking up
@@ -54,11 +54,10 @@ float POWER_INTERVAL = 0.5;
 float STREAM_INTERVAL = 1;
 
 // define the Real Time Clock object
-RTC_DS1307 RTC; 
+RTC_PCF8523 RTC;
 
 // for the data logging shield, we use digital pin 10 for the SD cs line
 const int chipSelect = 0;
-
 // the logging file
 File TGC_logfile;
 
@@ -125,23 +124,12 @@ float* readTemp(){
 }//readTemp
 
 void readTime(char *time){
-    // TO DO
-
     #if TEST
         serialOut("readTime");
     #endif
-    //static char *time;
-    //char *temp;
 
-    //unixTime = now.unixtime();
-
-    int randNumber = random(100);
-    sprintf(time, "%09d", randNumber);
-    //time = &temp;
-    //serialOut(time);
-
-    //strcat(time, str(randNumber));
-
+    DateTime now = RTC.now();
+    sprintf(time, "%010lu", now.unixtime());
     return time;
 }//readTime
 
@@ -158,25 +146,18 @@ void readSD(char *data[]){
 
 void newFile(){
 
-    // File format should be: UNIXTIME_yyyy-mm-ddThhmmss
-    // For example: 1506907892_2017-10-02T193101.csv
-    // which is: 2017/Oct/02 7:39:01pm
-    /*
-    int unix   = now.unixtime();
+    // Fat32 limits file names to 8 characters plus a 3 character extension
+    // UNIX time is 10 characters long so we truncate off the first two characters to 
+    // form the file name. 
+
+    DateTime now = RTC.now();
+    unsigned long unix   = now.unixtime();
     int year   = now.year();
     int month  = now.month();
     int day    = now.day();
     int hour   = now.hour();
     int minute = now.minute();
     int second = now.second();
-    */
-    unsigned long unix   = 1506907891;
-    int year   = 2017;
-    int month  = 10;
-    int day    = 2;
-    int hour   = 19;
-    int minute = 31;
-    int second = 4;
 
     char buff[580];
     char *header = buff;
@@ -192,16 +173,8 @@ void newFile(){
         "Battery Amps, Solar Amps,Hydro Amps,Load Amps,Battery Energy State,"
         "Outside Temp,Cabin Temp,Battery Temp\n", year, month, day, hour, minute, second, unix);
 
-    sprintf(filename, "%010lu_%04d-%02d-%02dT%02d%02d%02d.csv", unix, year, month, day, hour, minute, second);
+    sprintf(filename, "%08lu.csv", unix%100000000);
 
-    //readTime(temp);
-    //strcat(temp, ".csv");
-    //memcpy(filename, temp, sizeof(char)*NAME_LENGTH);
-#if TEST
-    return;
-#endif
-    
-    /*
     TGC_logfile.close();
 
     if (! SD.exists(filename)) {
@@ -213,10 +186,8 @@ void newFile(){
         error("couldnt create file");
     }
 
-    Serial.print("Logging to: ");
-    serialOut(filename);
+    return;
 
-    */
 }//newFile
 
 void standby(){
@@ -263,30 +234,67 @@ void test(){
     float *voltages, *amps, *temps; //create pointers to point at data
 
     voltages = readVoltage();
-    int voltAdd = voltages;
-    Serial.println(voltAdd);
-    delay(5);
     amps = readAmp();
     temps = readTemp();
     readTime(time);
-    printArray(voltages, 4);
-    printArray(amps, 4);
-    printArray(temps, 3);
-    serialOut(time);
+    //printArray(voltages, 4);
+    //printArray(amps, 4);
+    //printArray(temps, 3);
+    //serialOut(time);
     serialOut("Old filename:");
     serialOut(filename);
     newFile();
     serialOut("New filename:");
     serialOut(filename);
-    //delay(2000);
-    sleep();
+    delay(2000);
+    //sleep();
     return;
+}
+
+void printDirectory(File dir, int numTabs){
+    //reccursively print all files and directories inside 'dir'. Use "/" for root
+while (true) {
+    File entry =  dir.openNextFile();
+    if (! entry) {
+      // no more files
+      break;
+    }
+    for (int i = 0; i < numTabs; i++) {
+      Serial.print('\t');
+    }
+    Serial.print(entry.name());
+    if (entry.isDirectory()) {
+      Serial.println("/");
+      printDirectory(entry, numTabs + 1);
+    } else {
+      // files have sizes, directories do not
+      Serial.print("\t\t");
+      Serial.println(entry.size(), DEC);
+    }
+    entry.close();
+  }
 }
 
 void setup() {
 
     Serial.begin(9600);
     serialOut("");
+
+    // Real Time Clock (RTC) setup
+    if (! RTC.begin()) {
+        Serial.println("Couldn't find RTC");
+        while (1);
+    }
+    if (! RTC.initialized()) {
+        Serial.println("RTC is NOT running!");
+        // following line sets the RTC to the date & time this sketch was compiled
+        // RTC.adjust(DateTime(F(__DATE__), F(__TIME__)));
+        // This line sets the RTC with an explicit date & time, 
+        // for example to set it to the last time I banged your Mom
+        // 2017/October/02 at 6:57pm use:
+        // RTC.adjust(DateTime(2017, 10, 02, 18, 57, 0));
+    }
+
 
     pinMode(RED_LED_PIN, OUTPUT);
     pinMode(GREEN_LED_PIN, OUTPUT);
@@ -307,12 +315,11 @@ void setup() {
     sei(); //enable interupts
   
 
-#if !(TEST)
     // initialize the SD card
-    Serial.print("Initializing SD card...");
+    serialOut("Initializing SD card...");
     // make sure that the default chip select pin is set to
     // output, even if you don't use it:
-    pinMode(0, OUTPUT);
+    pinMode(10, OUTPUT);
 
     // see if the card is present and can be initialized:
     if (!SD.begin(chipSelect)) {
@@ -320,17 +327,14 @@ void setup() {
     }
     serialOut("card initialized.");
 
-
+#if TEST
+    //print out all files on the card
+    TGC_logfile = SD.open("/");
+    printDirectory(TGC_logfile, 0);
+#endif
 
     // create a new file
     newFile();
-    // connect to RTC
-    Wire.begin();  
-    if (!RTC.begin()) {
-        TGC_logfile.println("RTC failed");
-    serialOut("RTC failed");
-    }
-#endif
 
 }//setup
 
