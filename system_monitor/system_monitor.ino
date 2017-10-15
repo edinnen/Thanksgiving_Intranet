@@ -120,7 +120,6 @@ int* readVoltage(){
     // The voltages are read inside this function
     static int voltages[4] = {0, 0, 0, 0}; // Initiallize the array of values
     debugOut("readVoltage");
-    debugOut(filename);
 
     for(int i=0; i<NUM_SOURCES; i++){
         voltages[i] =  analogRead(VOLT_PIN[i]) * VOLT_MULTI[i];
@@ -237,7 +236,7 @@ void newFile(){
     int minute = now.minute();
     int second = now.second();
 
-    char buff[580];
+    char buff[500];
     char *header = buff;
     // Create the header using the current time/date data
     sprintf(header,
@@ -254,9 +253,9 @@ void newFile(){
 
     // Create the new filename including the system state
     if(LOAD_ON_FLAG == TRUE){
-    sprintf(filename, "%08lu.ON\0", unix%100000000);
+    sprintf(filename, "%08lu.ON", unix%100000000);
     }else{
-    sprintf(filename, "%08lu.OFF\0", unix%100000000);
+    sprintf(filename, "%08lu.OFF", unix%100000000);
     }
 
     // Make sure any open files are closed
@@ -394,22 +393,24 @@ void test(){
 
 void printRootDir(){
     File dir = SD.open("/");
+    //File entry;
     dir.rewindDirectory(); // Go back to first file
 
     debugOut("List files in root directory:");
     while (true) {
-        File entry =  dir.openNextFile();
-        if (! entry) {
+        //entry =  dir.openNextFile();
+        dir =  dir.openNextFile();
+        if (! dir) {
             // no more files
             break;
         }
-        Serial.println(entry.name());
+        Serial.println(dir.name());
         Serial.flush();
         //debugOut(entry.name());
         //Serial.println(entry.name());
         //Serial.print("\t\t");
         //Serial.println(entry.size(), DEC);
-        entry.close();
+        dir.close();
     }
     debugOut("Thats all of them!");
 }
@@ -426,19 +427,29 @@ void dateTime(uint16_t* date, uint16_t* time) {
 
 void dumpFile(){
     debugOut("dumpFile");
-    //Serial.flush();
-    char mess[25];
-    char i = 0;
+    Serial.println("poopy butt holes"); // Helps make it work for some reason
+    Serial.flush();
 
+    char mess[17];
+    int i = 0;
+
+    //delay(SERIAL_DELAY);
     while(Serial.available()){
         mess[i] = Serial.read();
         i++;
-        if(i>=23) break;
+        if(i>=15) break;
     }
     mess[i] = '\0'; // NULL terminate the string
 
     //debugOut(mess);
+    //Serial.println(mess);
+    //Serial.flush();
     //delay(SERIAL_DELAY);
+    if(!SD.exists(mess)){
+        Serial.println("mess Doesn't exist");
+        Serial.flush();
+        return;
+    }
     File dataFile = SD.open(mess);
     if(dataFile){
         while(dataFile.available()){
