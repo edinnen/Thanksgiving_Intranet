@@ -4,6 +4,7 @@ import (
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/postgres"
 	"time"
+	"fmt"
 )
 
 var DB *gorm.DB
@@ -13,6 +14,7 @@ type Post struct {
 	gorm.Model
 	Members  string
 	Entry string
+	Files string
 	Datetime string
 }
 
@@ -49,9 +51,11 @@ func Init() (*gorm.DB, error) {
 	if !DB.HasTable(&Post{}) {
 		DB.CreateTable(&Post{})
 	}
-	
-	testPost := Post{Members: "Pat, Larry, Kylie, & Tich", Entry: "Survey in Fairy Glade. Total length to date 220m. Still goes. Getting near to bridge.", Datetime: "18/05/1997"}
+
+	var testFiles = "{test1,test2}"
+	testPost := Post{Members: "Pat, Larry, Kylie, & Tich", Entry: "Survey in Fairy Glade. Total length to date 220m. Still goes. Getting near to bridge.", Files: testFiles, Datetime: "18/05/1997"}
 	DB.Create(&testPost)
+	fmt.Printf("%+v", testPost)
 
 	return DB, err
 }

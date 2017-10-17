@@ -2,6 +2,7 @@ import React, { Component, PropTypes } from 'react';
 import { Button, Modal } from 'react-bootstrap/lib';
 import axios from 'axios';
 import Urls from '../util/Urls.js';
+import postgresArray from 'postgres-array';
 
 class PostRow extends Component {
   constructor(props) {
@@ -75,10 +76,13 @@ class PostRow extends Component {
   render() {
     const { post } = this.props;
     const { showModal, isDeleteLoading } = this.state;
+    var files = postgresArray.parse(post.Files);
+    console.log(postgresArray.parse(post.Files))
     return (
       <tr>
         <td>{post.Members}</td>
         <td>{post.Entry}</td>
+        <td>{files[0]}</td>
         <td>{post.Datetime}</td>
         <td>
           {/*this.makeEditButton()*/}
@@ -111,6 +115,7 @@ PostRow.propTypes = {
   post: PropTypes.shape({
     Members: PropTypes.string.isRequired,
     Entry: PropTypes.string.isRequired,
+    Files: PropTypes.string,
     Datetime: PropTypes.string.isRequired,
     ID: PropTypes.number.isRequired,
   }),
