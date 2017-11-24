@@ -103,7 +103,7 @@ class Power extends Component {
     };
 
     const panelStyle = {
-      width,
+      width: '95vw',
       margin: 'auto',
       marginTop: '65px',
     };
@@ -112,10 +112,11 @@ class Power extends Component {
       <div>
         <TopNavbar />
         <Panel style={panelStyle} bsStyle="primary">
-        <RTChart
+          <RTChart
             flow={flow}
             fields={['Solar','Pelton','Battery']}
-            data={data} />
+            data={data}
+            maxValues={30} />
         </Panel>
       </div>
     );
