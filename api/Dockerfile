@@ -6,6 +6,9 @@ FROM golang
 ARG app_env
 ENV APP_ENV $app_env
 
+RUN apt update
+RUN apt install -y python3 python3-matplotlib python3-numpy
+
 COPY . /go/src/github.com/user/Thanksgiving_Intranet/api
 WORKDIR /go/src/github.com/user/Thanksgiving_Intranet/api
 

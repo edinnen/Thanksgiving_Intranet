@@ -8,7 +8,76 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"io/ioutil"
+	"os/exec"
+	"io"
+	"bufio"
 )
+
+type PowerData struct {
+	Solar float64 `json:"solar"`
+	Pelton float64 `json:"pelton"`
+	Battery float64 `json:"battery"`
+}
+
+
+func fetchPowerStats(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	// That's SO fetch
+	setCors(w)
+	cmd := exec.Command("python3", "scripts/powerData.py")
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
+	err = cmd.Start()
+	if err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
+	go copyOutput(stdout)
+	go copyOutput(stderr)
+	cmd.Wait()
+}
+
+func copyOutput(r io.Reader) {
+    scanner := bufio.NewScanner(r)
+    for scanner.Scan() {
+        fmt.Println(scanner.Text())
+    }
+}
+
+func toJson(p interface{}) []byte {
+	bytes, err := json.Marshal(p)
+	if err != nil {
+		os.Exit(1)
+	}
+
+	return bytes
+}
+
+func readPowerStats(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	setCors(w)
+	raw, err := ioutil.ReadFile("./scripts/data.json")
+	if err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
+
+	var powerData []PowerData
+	json.Unmarshal(raw, &powerData)
+	res := toJson(powerData)
+	if res == nil {
+		http.Error(w, "Error in json marshalling", 500)
+		return
+	}
+	w.Write(res)
+}
 
 // CRUD Route Handlers
 func createPostHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
@@ -140,6 +209,8 @@ func main() {
 	router.PUT("/posts/:postId", updatePostHandler)
 	router.GET("/posts", indexPostHandler)
 	router.OPTIONS("/*any", corsHandler)
+	router.GET("/powerData", readPowerStats)
+	router.POST("/fetch", fetchPowerStats)
 
 	// add database
 	_, err := database.Init()
