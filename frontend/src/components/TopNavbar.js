@@ -1,5 +1,6 @@
 import React from 'react';
 import { Navbar, Nav, NavItem } from 'react-bootstrap/lib';
+import Urls from '../util/Urls';
 
 function TopNavbar() {
   return (
@@ -14,10 +15,10 @@ function TopNavbar() {
         <Nav pullRight>
           <NavItem href="/logbook">Logbook</NavItem>
           <NavItem href="/power">Power Stats</NavItem>
+          <NavItem href={Urls.owncloud}>File Storage</NavItem>
           <NavItem href="/music">Music</NavItem>
           <NavItem href="/lights">Lights</NavItem>
           <NavItem href="/wiki">Wiki</NavItem>
-          <NavItem href="/memes">Dank Memes</NavItem>
         </Nav>
       </Navbar.Collapse>
     </Navbar>

@@ -1,6 +1,6 @@
 import React, { Component } from 'react';
 import { Panel } from 'react-bootstrap/lib';
-import Style from '../util/Style.js';
+// import Style from '../util/Style.js';
 import TopNavbar from './TopNavbar.js';
 import axios from 'axios';
 import Urls from '../util/Urls.js';
@@ -76,17 +76,17 @@ class Power extends Component {
 
 
   render() {
-    const { windowWidth, data } = this.state;
-    let width;
-    if (windowWidth < Style.xsCutoff) {
-      width = '100%';
-    } else if (windowWidth < Style.smCutoff) {
-      width = '723px';
-    } else if (windowWidth < Style.mdCutoff) {
-      width = '933px';
-    } else {
-      width = '1127px';
-    }
+    const { data } = this.state;
+    // let width;
+    // if (windowWidth < Style.xsCutoff) {
+    //   width = '100%';
+    // } else if (windowWidth < Style.smCutoff) {
+    //   width = '723px';
+    // } else if (windowWidth < Style.mdCutoff) {
+    //   width = '933px';
+    // } else {
+    //   width = '1127px';
+    // }
 
 
 
