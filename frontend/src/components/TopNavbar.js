@@ -16,7 +16,7 @@ function TopNavbar() {
           <NavItem href="/logbook">Logbook</NavItem>
           <NavItem href="/power">Power Stats</NavItem>
           <NavItem href={Urls.owncloud}>File Storage</NavItem>
-          <NavItem href="/music">Music</NavItem>
+          <NavItem href={Urls.music}>Music</NavItem>
           <NavItem href="/lights">Lights</NavItem>
           <NavItem href="/wiki">Wiki</NavItem>
         </Nav>
