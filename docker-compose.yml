@@ -81,3 +81,12 @@ services:
       - REDIS_MAXCONN=10000
     volumes:
       - ./redis:/var/lib/redis
+
+  music:
+    build:
+      context: ./music
+    volumes:
+      - ./music/files:/var/lib/mopidy/media
+    ports:
+      - "6600:6600"
+      - "6680:6680"
