@@ -18,7 +18,7 @@ function TopNavbar() {
           <NavItem href={Urls.owncloud}>File Storage</NavItem>
           <NavItem href={Urls.music}>Music</NavItem>
           <NavItem href="/lights">Lights</NavItem>
-          <NavItem href="/wiki">Wiki</NavItem>
+          <NavItem href={Urls.wiki}>Wiki</NavItem>
         </Nav>
       </Navbar.Collapse>
     </Navbar>

@@ -90,3 +90,11 @@ services:
     ports:
       - "6600:6600"
       - "6680:6680"
+  
+  wiki:
+    build:
+      context: ./wiki
+    volumes:
+      - ./wiki:/kiwix-data
+    ports:
+      - "3003:8080"
