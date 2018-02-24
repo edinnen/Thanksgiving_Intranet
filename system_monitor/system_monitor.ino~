@@ -13,8 +13,8 @@ stuartdehaas@gmail.com
 #include <SPI.h> // For SPI communication
 #include <SD.h> // SD Card library
 #include <Wire.h> // Used for serial communication
-#include "RTClib.h" //Real Time Clock library. Must be downloaded manually. https://github.com/adafruit/RTClib
-#include "elapsedMillis.h" //Used for monitoring the elapsed time. Downloaded manually. https://playground.arduino.cc/Code/ElapsedMillis#source
+#include "RTClib.h" //Real Time Clock library. Must be downloaded manually
+#include "elapsedMillis.h" //Used for monitoring the elapsed time. Downloaded manually
 #include <avr/sleep.h> //for sleeping
 #include <avr/power.h> //for sleeping deep
 #include <avr/wdt.h> //for waking up
@@ -46,7 +46,7 @@ char DEBUG_STREAM = TRUE; // Output debug info
 
 
 // Global variable containing the current filename
-// I had to 'malloc' it to keep it from disapearing. Stupid shit
+// I had to 'malloc' it to keep it from disapearing. Stuipd shit
 char *filename = (char *) malloc(15);
 
 const char NUM_SOURCES = 4; //number of voltage/current sources
@@ -222,8 +222,9 @@ void newFile(){
     // Create a new filename based on the time, close the old file, open a new one
     // and put a descriptive header at the top of the file
 
-    // Filenames are created from the current UNIX time given in hexadecimal due to filename limitations
     // Fat32 limits file names to 8 characters plus a 3 character extension
+    // UNIX time is 10 characters long so we truncate off the first two characters to 
+    // form the file name. 
     // Extensions are '.on' when the loads are connected. '.off' otherwise
 
     DateTime now = RTC.now();
@@ -240,9 +241,8 @@ void newFile(){
     // Create the header using the current time/date data
     sprintf(header,
         "#Thanksgiving Cabin Power System\n"
-        "#Time is in UNIX Time which is the number of seconds since 1970-Jan-01, "
-        "filename is given in hexadecimal representation\n"
-        "#To convert the date in cell 'A8' to an excel date serial number "
+        "#Time is in UNIX Time which is the number of seconds since 1970-Jan-01\n"
+        "#To convert the date in cell 'A7' to an excel date serial number "
         "in Vancover time use:\n"
         "#=(A8/86400)+25569+(-7/24)\n"
         "#or Google it\n"
@@ -250,16 +250,16 @@ void newFile(){
         "#Timestamp,Battery Voltage,Solar Voltage,Hydro Voltage,Load Voltage,"
         "Battery Amps, Solar Amps,Hydro Amps,Load Amps,Battery Energy State,"
         "Outside Temp,Cabin Temp,Battery Temp\n", year, month, day, hour, minute, second, unix);
-    
+
     // Create the new filename including the system state
     if(LOAD_ON_FLAG == TRUE){
-    sprintf(filename, "%8lx.ON", unix); // format option 'lx' is for a 'long hex' 
+    sprintf(filename, "%08lu.ON", unix%100000000);
     }else{
-    sprintf(filename, "%8lx.OFF", unix);
+    sprintf(filename, "%08lu.OFF", unix%100000000);
     }
 
     // Make sure any open files are closed
-    TGC_logfile.close();
+    //TGC_logfile.close();
 
     if (! SD.exists(filename)) {
         // only open a new file if it doesn't exist
@@ -392,22 +392,25 @@ void test(){
 }
 
 void printRootDir(){
-    File root = SD.open("/");
+    File dir = SD.open("/");
+    //File entry;
+    dir.rewindDirectory(); // Go back to first file
 
     debugOut("List files in root directory:");
     while (true) {
-        File entry = root.openNextFile();
-        if(! entry){
-            // No more files
+        //entry =  dir.openNextFile();
+        dir =  dir.openNextFile();
+        if (! dir) {
+            // no more files
             break;
         }
-        Serial.println(entry.name());
+        Serial.println(dir.name());
         Serial.flush();
         //debugOut(entry.name());
         //Serial.println(entry.name());
         //Serial.print("\t\t");
         //Serial.println(entry.size(), DEC);
-        entry.close();
+        dir.close();
     }
     debugOut("Thats all of them!");
 }
