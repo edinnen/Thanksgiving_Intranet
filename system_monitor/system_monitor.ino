@@ -21,11 +21,14 @@ stuartdehaas@gmail.com
 
 #define FALSE 0
 #define TRUE 1
-#define AREF_VOLT 4.096 //Using an external voltage reference (LM4040)
+
+//Using an external voltage reference (LM4040) 
+//decided against using it on AREF and instead will put it on a standard analog pin
+#define AREF_VOLT 4.096 
 //#define TEST 1 //Used during testing to enable/disable certain functionality
 //#define NAME_LENGTH 8 // Length of the filenames
 #define SERIAL_DELAY 5 // Delay after each serial output
-#define ANALOG_READ_DELAY 10 // Delay between analog reads. Lets the ADC settle down
+#define ANALOG_READ_DELAY 10 // Delay between analog reads. Lets the ADC settle down. Not needed?
 
 // Battery voltage considered low. System behaviour will change below this value
 #define BATT_VOLT_LOW 1200 
@@ -34,49 +37,56 @@ stuartdehaas@gmail.com
 #define GREEN_LED_PIN 4
 
 // Flag is set by the watch dog timer (WDT)
-char WDT_FLAG = FALSE;
+byte WDT_FLAG = FALSE;
 
 // Flags for indicating if the load is connected and if the state changed
-char LOAD_ON_FLAG = FALSE;
-char PREV_LOAD_STATE = FALSE;
+byte LOAD_ON_FLAG = FALSE;
+byte PREV_LOAD_STATE = FALSE;
 
 // Flags used to determine types of output to produce
-char DATA_STREAM = FALSE; // Stream data to RPi
-char DEBUG_STREAM = TRUE; // Output debug info 
+byte DATA_STREAM = FALSE; // Stream data to RPi
+byte DEBUG_STREAM = TRUE; // Output debug info 
 
 
 // Global variable containing the current filename
 // I had to 'malloc' it to keep it from disapearing. Stupid shit
 char *filename = (char *) malloc(15);
 
-const char NUM_SOURCES = 4; //number of voltage/current sources
+const byte NUM_SOURCES = 4; //number of voltage/current sources
 // System Order: Batt, Solar, Hydro, Load
 // Voltages are read in cV and currents in cA to avoid floating point numbers
 // 1 V = 100 cV. Think meters and centimeters (1m = 100cm)
-const char VOLT_PIN[] = {0, 1, 2, 3};
-// voltage = (reading) * AREF/1024 * (voltage divider) * 1000(mV/V)
-const int VOLT_MULTI[] = {4, 6, 8, 4}; //Voltage divider multiplier
-const char AMP_PIN[] = {8, 9, 10, 11};
-// current = (reading - 512) * (100amps)/(512) * 100(cA/A) / (num wire passes) 
-// assuming sensors are powered from the same source as AREF
-const char AMP_MULTI[] = {195, 195, 195, 195}; 
+const byte VOLT_PIN[] = {0, 1, 2, 3};
+// Voltage is calculated with this equation: reading * (4096mV/[reference voltage reading]) 
+//                                              * [voltage divider multiplyer] = [actual voltage in mV]
+// It's been simplified to avoid floats and interger overflow as: 
+//      reading * [VOLT_MULTI] / [reference voltage reading] = [Actual Voltage]
+//  Where VOLT_MULTI is just the voltage divider multiplier times the reference voltage in mV
+const unsigned long VOLT_MULTI[] = {50602ul, 30048ul, 15876ul, 15876ul}; //Voltage divider multiplier
+const byte AMP_PIN[] = {8, 9, 10, 11};
+// Actual Current = (reading - AMP_DC_OFFSET)*MULTI
+// AMP_MULTI = 1/([calibrated gain]/10)*4096 * [Number of physical wire turns in sensor]. 
+// Current sensors are independently tested and have calibrations. 
+// S/N = {B1720096, B1720089, B1720090, B1720091} Need to be installed the the correct location!!!!
+const unsigned int AMP_DC_OFFSET = {508, 510, 510, 507};
+const unsigned long AMP_MULTI[] = {252839ul, 269474ul * 3, 248242ul * 3, 269474ul * 3}; 
 
 //Address of temperature sensors
 // TODO
-const int NUM_TEMPS = 3;
-const int TEMP_ADDRESS[] = {1234, 5678, 9101};
+const unsigned byte NUM_TEMPS = 3;
+const unsigned int TEMP_ADDRESS[] = {1234, 5678, 9101};
 
 // Intervals used between readings/SD writes
 int NUM_NAPS_TAKEN = 0; // Number of naps taken during standby mode. One 'nap' is ~8sec long
 // Used when in standby mode for long waits between writes
 // use 37 naps for about 5min between SD writes, or 150 naps for ~20min. Note: not very accurate 
 const int NUM_NAPS_BETWEEN_SD_WRITES = 1;
-const int LOAD_INTERVAL = 2000;
+const int LOAD_INTERVAL = 2000; //milliseconds
 const int ENERGY_INTERVAL = 500;
 
 // Energy Level of the system in joules. Indicates the current system energy deficet.
-// ENERGY_LEVEL == 0 indicates a full battery, -5400000 is empty. Never go there!
-int ENERGY_LEVEL = 0;
+// ENERGY_LEVEL == 0 indicates a full battery, 5400000 is empty. Never go there!
+unsigned int ENERGY_LEVEL = 0;
 
 // elapsedMillis creates a background timer that constantly counts up. Much better to use these
 // timers than to use a delay. Does not work while asleep so make sure to reset after sleeping
@@ -89,7 +99,7 @@ elapsedMillis SYSTEM_TIME_ELAPSED;
 RTC_PCF8523 RTC;
 
 // for the data logging shield, we use digital pin 10 for the SD cs line
-const int chipSelect = 10;
+const byte chipSelect = 10;
 // the logging file
 File TGC_logfile;
 
@@ -104,11 +114,20 @@ void sleep(){
     debugOut("Starting my nap");
     // This function puts the arduino in a deep sleep to save power. 
     // Each nap takes about 8 seconds but don't rely on this being accurate.
+
+    // Setting the 'Sleep Mode Control Register' or SMCR
+    // SMCR = ----010- is Power-Down mode
     set_sleep_mode(SLEEP_MODE_PWR_DOWN);
+    // Sleep enable: SMCR = -------1
     sleep_enable();
+
+    // Power reduction register 0; shut down ADC PRR0 = -------1
+    // Probably need to research more into power reduction...
+
     // Now enter sleep mode.
     sleep_mode();
     // The program will continue from here after the WDT timeout
+    // Sleep disable: SMCR = -------0
     sleep_disable(); // First thing to do is disable sleep.
     // Re-enable the peripherals.
     power_all_enable();
@@ -116,7 +135,7 @@ void sleep(){
     NUM_NAPS_TAKEN++; // We took a nap so update the counter
   } 
 
-int* readVoltage(){
+int* readVoltage(){ // TODO
     // The voltages are read inside this function
     static int voltages[4] = {0, 0, 0, 0}; // Initiallize the array of values
     debugOut("readVoltage");
@@ -138,7 +157,7 @@ int* readVoltage(){
     return voltages;
 }//readVoltage
 
-int* readAmp(){
+int* readAmp(){ //TODO
     // The currents are read inside this function
     debugOut("readAmp");
     static int amps[4] = {0,0,0,0};
@@ -174,11 +193,11 @@ unsigned long readTime(){
     return now.unixtime();
 }//readTime
 
-char * intToString(int num){
+byte * intToString(int num){
     // Converts a 4 digit integer to a string representation of the floating point value after 
     // conversion. i.e. convert 1200 centiVolts to 12.00 Volts (as a string)
-    static char buff[6];
-    char *str = buff;
+    static byte buff[6];
+    byte *str = buff;
     sprintf(str, "%02d.%02d", (num/100), num%100);
     return str;
 }
@@ -186,8 +205,8 @@ char * intToString(int num){
 void writeReadings(){
     // Take the various measurments and then write them to the SD card
 
-    char dataBuff[90]; // Buffer used to output the sweet sweet data
-    char *data = dataBuff; // Pointer that points at the data buffer
+    byte dataBuff[90]; // Buffer used to output the sweet sweet data
+    byte *data = dataBuff; // Pointer that points at the data buffer
     int *voltages, *amps, *temps; //create pointers to point at arrays of data
     unsigned long time;
 

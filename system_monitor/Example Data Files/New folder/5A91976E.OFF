@@ -1,7 +1,0 @@
-#Thanksgiving Cabin Power System
-#Time is in UNIX Time which is the number of seconds since 1970-Jan-01
-#To convert the date in cell 'A7' to an excel date serial number in Vancover time use:
-#=(A8/86400)+25569+(-7/24)
-#or Google it
-#Created: 2018-02-24 at 16:48:46 or 1519490926 in UNIX time
-#Timestamp,Battery Voltage,Solar Voltage,Hydro Voltage,Load Voltage,Battery Amps, Solar Amps,Hydro Amps,Load Amps,Battery Energy State,Outside Temp,Cabin Temp,Battery Temp
