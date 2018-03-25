@@ -6,8 +6,8 @@
 
 import React from 'react';
 import { Helmet } from 'react-helmet';
-
 import Header from 'components/Header';
+
 import CenteredSection from './CenteredSection';
 import Wrapper from './Wrapper';
 
