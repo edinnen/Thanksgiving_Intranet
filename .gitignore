@@ -1,4 +1,2 @@
-*.img
 frontend/node_modules
-db/pgdata
-*.zim
+frontend/build
