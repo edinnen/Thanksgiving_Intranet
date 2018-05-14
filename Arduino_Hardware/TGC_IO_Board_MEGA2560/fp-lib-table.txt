@@ -1,0 +1,9 @@
+(fp_lib_table
+  (lib
+    (name FT)
+    (type Github)
+    (uri https://github.com/freetronics/freetronics_kicad_library/freetronics_footprints.pretty)
+    (options "")
+    (descr "Freetronics Kicad library footprints")
+  )
+)
