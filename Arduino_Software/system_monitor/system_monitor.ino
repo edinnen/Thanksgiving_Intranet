@@ -19,16 +19,20 @@ stuartdehaas@gmail.com
 #include <avr/power.h> //for sleeping deep
 #include <avr/wdt.h> //for waking up
 
-// Debug macro
+// Debug macro. If DEBUG is defined, debug functions will be replaced with
+    //output to the USB serial. Otherwise they will be skipped.
 #define DEBUG 1
-#if DEBUG
-#define debugOut(x) (Serial.println(x))
+#ifdef DEBUG
+#define debug_print(x) (Serial.print(x))
+#define debug_println(x) (Serial.println(x))
 #else
-#define debugOut(x)
+#define debug_print(x)
+#define debug_println(x)
 #endif
 
 #define FALSE 0
 #define TRUE 1
+
 
 //Using an external voltage reference (LM4040) 
 #define AREF_VOLT 4.096 
@@ -52,7 +56,7 @@ bool LOAD_ON_FLAG = FALSE;
 bool PREV_LOAD_STATE = FALSE;
 
 // Flags used to determine types of output to produce
-byte DATA_STREAM = FALSE; // Stream data to RPi
+//byte DATA_STREAM = FALSE; // Stream data to RPi
 
 
 // Global variable containing the current filename
@@ -87,7 +91,7 @@ const unsigned long VOLT_MULTI[] = {50602ul, 30048ul, 15876ul, 15876ul}; //Volta
 
 // Current sensors are independently tested and have calibrations. 
 // S/N = {B1720096, B1720089, B1720090, B1720091} Need to be installed the the correct location!!!!
-const unsigned int AMP_DC_OFFSET = {508, 510, 510, 507}; //TODO calibrate myself
+const unsigned int AMP_DC_OFFSET[] = {508, 510, 510, 507}; //TODO calibrate myself
 const unsigned long AMP_MULTI[] = {252839ul, 269474ul * 3, 248242ul * 3, 269474ul * 3}; 
 
 //Address of temperature sensors
@@ -114,13 +118,65 @@ elapsedMillis ENERGY_TIME_ELAPSED;
 // system interval timer. Used to time SD card writes
 elapsedMillis SYSTEM_TIME_ELAPSED;
 
-// define the Real Time Clock (RTC) object
-RTC_PCF8523 RTC;
 
-// for the data logging shield, we use digital pin 10 for the SD cs line
+// chip select pin is 53 TODO
 const byte chipSelect = 10;
 // the logging file
 File LOG;
+
+void setup() {
+
+#ifdef DEBUG
+    // Set the baud rate between the arduino and computer. 115200 is nice and fast!
+    // This is the debug serial output
+    Serial.begin(115200);
+#endif
+    time_setup(); // Setup time keeping
+
+
+
+    // Set file timestamps using a function pointer to call the function. Dumb shit
+    SdFile::dateTimeCallback(dateTime); //TODO what?
+
+    pinMode(RED_LED_PIN, OUTPUT);
+    pinMode(GREEN_LED_PIN, OUTPUT);
+
+    //Using an external voltage reference for increased accuracy
+    //analogReference(EXTERNAL);
+    analogRead(0); //To help settle the ADC before taking readings
+
+    // WDT setup
+    cli(); //disable interrupts
+    wdt_reset();
+    // Enter 'Config mode'
+    WDTCSR |= (1<<WDCE) | (1<<WDE);
+    // Set interupts, reset on timeout, last 4 do time (1001 is 8sec)
+    WDTCSR = (1<<WDIE) | (0<<WDE) | (1<<WDP3) | (0<<WDP2) | (0<<WDP1) | (1<<WDP0);
+    sei(); //enable interupts
+
+    // initialize the SD card
+    debug_println("Initializing SD card...");
+    // make sure that the default chip select pin is set to
+    // output, even if you don't use it:
+    pinMode(chipSelect, OUTPUT);
+
+    // see if the card is present and can be initialized:
+    if (!SD.begin(chipSelect)) {
+        debug_println("Card failed, or not present");
+    }
+    debug_println("card initialized.");
+
+    printRootDir();
+#ifdef DEBUG
+    //print out all files on the card
+ //   LOG = SD.open("/");
+ //   printDirectory(LOG, 0);
+#endif
+
+    // create a new file
+    newFile();
+
+}//setup
 
 ISR(WDT_vect){
     // The system is woken up from sleep by the 'watch dog timer' WDT which is an interupt
@@ -130,7 +186,7 @@ ISR(WDT_vect){
 }
 
 void sleep(){  
-    debugOut("Starting my nap");
+    debug_println("Starting my nap");
     // This function puts the arduino in a deep sleep to save power. 
     // Each nap takes about 8 seconds but don't rely on this being accurate.
 
@@ -150,7 +206,7 @@ void sleep(){
     sleep_disable(); // First thing to do is disable sleep.
     // Re-enable the peripherals.
     power_all_enable();
-    debugOut("Finished my nap");
+    debug_println("Finished my nap");
     NUM_NAPS_TAKEN++; // We took a nap so update the counter
   } 
 
@@ -174,7 +230,6 @@ int* readVoltage(){ // TODO
     }
     return voltOutput;
 }// readVoltage
-
 
 int* readAmp(){ //TODO
     // The currents are read inside this function
@@ -540,71 +595,6 @@ void pythonTalk(){
 
 }
 
-void setup() {
-
-    Serial.begin(9600);
-    debugOut("");
-
-    // Real Time Clock (RTC) setup
-    if (! RTC.begin()) {
-        Serial.println("Couldn't find RTC");
-        while (1);
-    }
-    if (! RTC.initialized()) {
-        Serial.println("RTC is NOT running!");
-        // following line sets the RTC to the date & time this sketch was compiled
-        // RTC.adjust(DateTime(F(__DATE__), F(__TIME__)));
-        // This line sets the RTC with an explicit date & time, 
-        // for example to set it to the last time I banged your Mom
-        // 2017/October/02 at 6:57pm use:
-        // RTC.adjust(DateTime(2017, 10, 02, 18, 57, 0));
-    }
-
-    // Set file timestamps using a function pointer to call the function. Dumb shit
-    SdFile::dateTimeCallback(dateTime);
-
-    pinMode(RED_LED_PIN, OUTPUT);
-    pinMode(GREEN_LED_PIN, OUTPUT);
-
-    //Using an external voltage reference for increased accuracy
-    //analogReference(EXTERNAL);
-    analogRead(0); //To help settle the ADC before taking readings
-
-    // WDT setup
-    cli(); //disable interrupts
-    wdt_reset();
-    // Enter 'Config mode'
-    WDTCSR |= (1<<WDCE) | (1<<WDE);
-
-    // Set interupts, reset on timeout, last 4 do time (1001 is 8sec)
-    WDTCSR = (1<<WDIE) | (0<<WDE) | (1<<WDP3) | (0<<WDP2) | (0<<WDP1) | (1<<WDP0);
-
-    sei(); //enable interupts
-  
-
-    // initialize the SD card
-    debugOut("Initializing SD card...");
-    // make sure that the default chip select pin is set to
-    // output, even if you don't use it:
-    pinMode(chipSelect, OUTPUT);
-
-    // see if the card is present and can be initialized:
-    if (!SD.begin(chipSelect)) {
-        error("Card failed, or not present");
-    }
-    debugOut("card initialized.");
-
-    printRootDir();
-#if TEST
-    //print out all files on the card
- //   LOG = SD.open("/");
- //   printDirectory(LOG, 0);
-#endif
-
-    // create a new file
-    newFile();
-
-}//setup
 
 void loop() {
 
