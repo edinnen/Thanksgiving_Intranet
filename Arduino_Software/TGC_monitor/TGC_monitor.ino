@@ -3,16 +3,21 @@
 
 // Used for communicating with GPS
 #include "TinyGPS.h" //http://arduiniana.org/libraries/TinyGPS/
-//#include <Adafruit_GPS.h>
 // Used for time keeping
 #include "TimeLib.h" //https://github.com/PaulStoffregen/Time
-// Used to talk over I2C for RTC
-//Used for RTC
-#include "RTClib.h"
-#include <Wire.h>
+#include <Wire.h> // Used to talk over I2C for RTC
+#include "RTClib.h" //Used for RTC
+#include <SPI.h> // SPI communication with SD card
+#include <SD.h> // Used for the SD card (obviously you idiot)
+//Used for monitoring the elapsed time. Downloaded manually. 
+#include "elapsedMillis.h" //https://playground.arduino.cc/Code/ElapsedMillis#source
+#include <avr/sleep.h> //for sleeping
+#include <avr/power.h> //for sleeping deep
+#include <avr/wdt.h> //for waking up
 
 // what's the name of the hardware serial ports?
 #define GPSSerial Serial1 // The serial port used for the GPS communication
+#define RPiSerial Serial2 // Serial port 2 is wired to the RPi (if present)
 //#define debug     Serial  // Serial port for communicating over USB
 
 
@@ -27,6 +32,11 @@
 #define debug_println(x)
 #endif
 
+#define FALSE 0
+#define TRUE  1
+
+
+//************************** Time keeping stuff**********************************
 TinyGPS gps;
 //Adafruit_GPS GPS(GPSSerial);
 RTC_PCF8523 rtc;
@@ -36,6 +46,13 @@ bool GPS_SLEEP_FLAG = 1;
 const unsigned int GPS_SYNC_INTERVAL = 30;
 const unsigned int RTC_SYNC_INTERVAL = 10;
 const unsigned int WRONG_SYNC_INT = 5;
+
+// elapsedMillis creates a background timer that constantly counts up. Much better to use these
+// timers than to use a delay. Does not work while asleep so make sure to reset after sleeping
+// Energy measurments timer. Used to time measurments 
+elapsedMillis ENERGY_TIME_ELAPSED;
+// system interval timer. Used to time SD card writes
+elapsedMillis SYSTEM_TIME_ELAPSED;
 
 //************************** Analog Stuff **********************************
 
@@ -73,6 +90,27 @@ const unsigned long VOLT_MULTI[] = {15876ul, 30048ul, 50602ul}; //Voltage divide
 const unsigned int AMP_DC_OFFSET[] = {508, 510, 510, 507}; //TODO calibrate myself
 const unsigned long AMP_MULTI[] = {252839ul, 269474ul * 3, 248242ul * 3, 269474ul * 3}; 
 
+// Flags for indicating if the load is connected and if the state changed
+bool LOAD_ON_FLAG = FALSE;
+bool PREV_LOAD_STATE = FALSE;
+
+//************************** Other **********************************
+
+// Flag is set by the watch dog timer (WDT)
+byte WDT_FLAG = FALSE;
+// Intervals used between readings/SD writes
+int NUM_NAPS_TAKEN = 0; // Number of naps taken during standby mode. One 'nap' is ~8sec long
+// Used when in standby mode for long waits between writes
+// use 37 naps for about 5min between SD writes, or 150 naps for ~20min. Note: not very accurate 
+const int NUM_NAPS_BETWEEN_SD_WRITES = 2;
+
+// chip select pin is 53 TODO
+const byte chipSelect = 10;
+// the logging file
+File LOG;
+
+//************************** Begin Functions **********************************
+
 void setup() {
 #ifdef DEBUG
     // Set the baud rate between the arduino and computer. 115200 is nice and fast!
@@ -80,9 +118,24 @@ void setup() {
 #endif
    time_setup();
    analog_setup();
-   setWrongTime();
+   //setWrongTime();
    
+    // WDT setup
+    cli(); //disable interrupts
+    wdt_reset();
+    // Enter 'Config mode'
+    WDTCSR |= (1<<WDCE) | (1<<WDE);
+    // Set interupts, reset on timeout, last 4 do time (1001 is 8sec)
+    WDTCSR = (1<<WDIE) | (0<<WDE) | (1<<WDP3) | (0<<WDP2) | (0<<WDP1) | (1<<WDP0);
+    sei(); //enable interupts
 }// setup()
+
+ISR(WDT_vect){
+    // The system is woken up from sleep by the 'watch dog timer' WDT which is an interupt
+    // After interupt, the script goes here
+  //wdt_disable();  // disable watchdog
+    WDT_FLAG = TRUE;
+}
 
 void SYSTEM_HAULT(){
     // If the system has an error I can't handle, just give up on everything.
@@ -91,14 +144,55 @@ void SYSTEM_HAULT(){
      continue;
     }
 }
+
+void sleep(){  
+    debug_println("Starting my nap");
+    delay(10);
+    // This function puts the arduino in a deep sleep to save power. 
+    // Each nap takes about 8 seconds but don't rely on this being accurate.
+
+    // Setting the 'Sleep Mode Control Register' or SMCR
+    // SMCR = ----010- is Power-Down mode
+    set_sleep_mode(SLEEP_MODE_PWR_DOWN);
+    // Sleep enable: SMCR = -------1
+    sleep_enable();
+
+    // Power reduction register 0; shut down ADC PRR0 = -------1
+    // Probably need to research more into power reduction...
+
+    // Now enter sleep mode.
+    sleep_mode();
+    // The program will continue from here after the WDT timeout
+    // Sleep disable: SMCR = -------0
+    sleep_disable(); // First thing to do is disable sleep.
+    // Re-enable the peripherals.
+    power_all_enable();
+    delay(10);
+    debug_println("Finished my nap");
+    //NUM_NAPS_TAKEN++; // We took a nap so update the counter
+  } 
+
 void loop() {
+    int i=0;
+    long beforeNap = 0;
+    long afterNap = 0;
 
-    testVoltage();
+    for(i = 0;i<5;i++){
+        testVoltage();
 
-    debug_print("now(): ");
-    debug_println(now());
-    debug_print("GPS_SLEEP_FLAG: ");
-    debug_println(GPS_SLEEP_FLAG);
-    delay(1000);
-
+        debug_print("now(): ");
+        debug_println(now());
+        debug_print("GPS_SLEEP_FLAG: ");
+        debug_println(GPS_SLEEP_FLAG);
+        delay(1000);
+    }
+    beforeNap = now();
+    for(i=0;i<5;i++){
+        sleep();
+    }
+    setRTCtime();
+    afterNap = now();
+    debug_print("I slept for ");
+    debug_print(afterNap - beforeNap);
+    debug_print(" seconds. Wow!");
 }

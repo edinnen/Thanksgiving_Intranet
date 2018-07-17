@@ -88,14 +88,14 @@ time_t setGPStime(){
     }else{
        // Sorry for this dumb work around but time zones are hard...
        setTime(hour, minute, second, day, month, year); // Set the system time to GPS time (+0:00)
-       rtc.adjust(now()-7*3600); // Set RTC to Vancouver time (-7:00)
+       rtc.adjust(now()-(7*3600)); // Set RTC to Vancouver time (-7:00)
+       LAST_GPS_FIX = now()-(7*3600);
        setRTCtime(); // Set system to Vancouver time.
        debug_print("setGPStime: ");
        debug_println(now());
-       rtc.adjust(DateTime(year, month, day, hour, minute, second)); // Set the RTC time
+       //rtc.adjust(DateTime(year, month, day, hour, minute, second)); // Set the RTC time
        //setSyncProvider(setRTCtime);
        //setSyncInterval(RTC_SYNC_INTERVAL);
-       LAST_GPS_FIX = now();
     }
     return now();
 } // setGPStime
