@@ -99,3 +99,14 @@ time_t setGPStime(){
     }
     return now();
 } // setGPStime
+
+void humanTime(){
+    char buff[100];
+    char *output = buff;
+
+    time_t t = now();
+    sprintf(output, "The time is: %02d:%02d.%02d on %s %02d, %04d", hour(t), minute(t), second(t), monthStr(month(t)), day(t), year(t));
+    debug_println(output);
+
+    return;
+}
