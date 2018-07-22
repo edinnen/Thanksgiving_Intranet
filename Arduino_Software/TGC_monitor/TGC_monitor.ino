@@ -53,6 +53,14 @@ elapsedMillis ENERGY_TIME_ELAPSED;
 // system interval timer. Used to time SD card writes
 elapsedMillis SYSTEM_TIME_ELAPSED;
 
+// Intervals used between readings/SD writes
+int NUM_NAPS_TAKEN = 0; // Number of naps taken during standby mode. One 'nap' is ~8sec long
+// Used when in standby mode for long waits between writes
+// use 37 naps for about 5min between SD writes, or 150 naps for ~20min. Note: not very accurate 
+const int NUM_NAPS_BETWEEN_SD_WRITES = 2;
+const int LOAD_INTERVAL = 2000; //milliseconds
+const int ENERGY_INTERVAL = 500;
+
 //************************** Analog Stuff **********************************
 
 // Using an external voltage reference to increase accuracy. The reference is used to calculate the
@@ -68,7 +76,7 @@ const byte NUM_AMP_SOURCES = 4; // number of current sources
 
 // System Order: Load, Batt, Solar, Hydro //TODO
 const byte VOLT_PIN[] = {A12, A13, A14}; // Pin A12 == 66
-const byte LOAD_DETECT = 0; // Pin 0
+const byte LOAD_DETECT_PIN = 0; // Pin 0
 const byte AMP_PIN[] = {A8, A9, A10, A11}; // Pin A8 == 62
 
 // System voltages are read using voltage dividers to bring them into the range readable by the arduino (0-5V)
@@ -108,11 +116,10 @@ File LOG;
 
 // Flag is set by the watch dog timer (WDT)
 byte WDT_FLAG = FALSE;
-// Intervals used between readings/SD writes
-int NUM_NAPS_TAKEN = 0; // Number of naps taken during standby mode. One 'nap' is ~8sec long
-// Used when in standby mode for long waits between writes
-// use 37 naps for about 5min between SD writes, or 150 naps for ~20min. Note: not very accurate 
-const int NUM_NAPS_BETWEEN_SD_WRITES = 2;
+
+unsigned int ENERGY_LEVEL = 0;
+
+
 
 //************************** Begin Functions **********************************
 
@@ -123,6 +130,7 @@ void setup() {
 #endif
    time_setup();
    analog_setup();
+   SD_setup();
    //setWrongTime();
    
     // WDT setup
@@ -134,26 +142,6 @@ void setup() {
     WDTCSR = (1<<WDIE) | (0<<WDE) | (1<<WDP3) | (0<<WDP2) | (0<<WDP1) | (1<<WDP0);
     sei(); //enable interupts
 
-// see if the card is present and can be initialized:
-    pinMode(SDmasterSelect, OUTPUT);
-    digitalWrite(SDmasterSelect, LOW);
-    //pinMode(52, OUTPUT); //slave select
-    //if (!SD.begin(chipSelect, SPI_HALF_SPEED)) {
-    if (!SD.begin(chipSelect)) {
-        debug_println("Card failed, or not present");
-    }else{
-        debug_println("card initialized.");
-    }
-
-    //printRootDir();
-#ifdef DEBUG
-    //print out all files on the card
- //   LOG = SD.open("/");
- //   printDirectory(LOG, 0);
-#endif
-
-    // create a new file
-    newFile();
 }// setup()
 
 ISR(WDT_vect){
@@ -195,118 +183,39 @@ void sleep(){
     power_all_enable();
     delay(10);
     debug_println("Finished my nap");
-    //NUM_NAPS_TAKEN++; // We took a nap so update the counter
-} 
 
-void writeReadings(){
-    // Take the various measurments and then write them to the SD card
+    NUM_NAPS_TAKEN++; // We took a nap so update the counter
+} // sleep()
 
-    char dataBuff[150]; // Buffer used to output the sweet sweet data TODO set length to be reasonable
-    char *data = dataBuff; // Pointer that points at the data buffer
-    unsigned long time = now();
+void loadConnected(){
 
-    // Create buffers to hold the data as a string and pass the variables to the function
-    char BattV[10], SolarV[10], HydroV[10];
-    readVoltages(BattV, SolarV, HydroV);
+    // If there is serial data waiting, goto function
+    //if(Serial.available()) pythonTalk(); 
 
-    // Create buffers to hold the data as a string and pass the variables to the function
-    char LoadA[10], BattA[10], SolarA[10], HydroA[10];
-    readAmps(LoadA, BattA, SolarA, HydroA);
+    // Update the energy state every interval
+    if(ENERGY_TIME_ELAPSED > ENERGY_INTERVAL) energyUpdate(); 
 
-    // For testing
-    char outT[] = "10.1";
-    char inT[]  = "21.5";
-    char boxT[] = "23.3";
-    int ENERGY_LEVEL = 121;
+    // Write to the SD card every 'LOAD_INTERVAL'
+    if(SYSTEM_TIME_ELAPSED > LOAD_INTERVAL) writeReadings();
 
-    // Merging and converting the data into one big string, 'data'
-    sprintf(data, "%010lu,%s,%s,%s,%s,%s,%s,%s,%d,%s,%s,%s\n",
-            time, BattV, SolarV, HydroV, LoadA, BattA, SolarA, HydroA, ENERGY_LEVEL, outT, inT, boxT);
-
-    // Output the data to the serial port
-    debug_print(filename);
-    debug_print(": ");
-    debug_println(data);
-
-    // Open the current data file, ouput the data, and close it up again
-    LOG = SD.open(filename, FILE_WRITE); 
-    //if( !LOG.print(data) ) debug_println("Didn't print data");
-    if( !LOG.print(data) ) debug_println("Didn't print data");
-    LOG.flush();
-    LOG.close();
-
-    // reset the timmer used between SD card writes
-    //SYSTEM_TIME_ELAPSED = 0;
-    return;
+    // TODO add serial monitoring
 }
 
-void newFile(){
-    // Create a new filename based on the time, close the old file, open a new one
-    // and put a descriptive header at the top of the file
+void standby(){
+    // This function is called each time the arduino wakes up from a nap during 'standby'
+    // Standby is activated when the loads are disconected indicating that the cabin is shut down
 
-    // Filenames are created from the current UNIX time given in hexadecimal due to filename limitations
-    // Fat32 limits file names to 8 characters plus a 3 character extension
-    // Extensions are '.on' when the loads are connected. '.off' otherwise
-
-    time_t t = now(); // Put the current unit time into variable t
-    unsigned long unix = t;
-    char buff[500]; // Create a buffer for the header text
-    char *header = buff; // Pointer that points to the buffer
-
-    // Create the header using the current time/date data TODO is the equation right?
-    sprintf(header,
-        "#Thanksgiving Cabin Power System\n"
-        "#Time is in UNIX Time which is the number of seconds since 1970-Jan-01, "
-        "filename is given in hexadecimal representation\n"
-        "#To convert the date in cell 'A8' to an excel date serial number "
-        "in Vancover time use:\n"
-        "#=(A8/86400)+25569+(-7/24)\n"
-        "#or Google it\n"
-        "#Created: %04d-%02d-%02d at %02d:%02d:%02d or %010lu in UNIX time\n"
-        "#Timestamp,Battery Voltage,Solar Voltage,Hydro Voltage,"
-        "Battery Amps, Solar Amps,Hydro Amps,Load Amps,Battery Energy State,"
-        "Outside Temp,Cabin Temp,Battery Temp\n", year(t), month(t), day(t), hour(t), minute(t), second(t), t);
-    
-    // Create the new filename including the system state
-    if(LOAD_ON_FLAG == TRUE){
-    sprintf(filename, "%8lx.ON", unix); // format option 'lx' is for a 'long hex' 
+    // Write to the SD card every 'STANDBY_INTERVAL'
+    if(NUM_NAPS_TAKEN >= NUM_NAPS_BETWEEN_SD_WRITES){
+        //energyUpdate();
+        writeReadings();
+        NUM_NAPS_TAKEN = 0;
     }else{
-    sprintf(filename, "%8lx.OFF", unix);
-    debug_println(filename);
+    sleep();
     }
+}//standby
 
-    // Make sure any open files are closed
-    LOG.close();
-
-    if (! SD.exists(filename)) {
-        // only open a new file if it doesn't exist
-        LOG = SD.open(filename, FILE_WRITE); 
-    }else{debug_println("filename already exists");}
-    if (! LOG) {
-        debug_println("couldnt create file");
-    }
-
-    if(LOG){
-        debug_println("Opened LOG for writing...");
-        // Put the header at the top of the file
-        LOG.print(header);
-        LOG.flush();
-
-        //debug_println(filename);
-        // Close the old file
-        LOG.close();
-    }else{
-        debug_println("unable to open LOG");
-    }
-
-    debug_println("New filename created");
-    debug_println(filename);
-
-    return;
-
-}//newFile
-
-void loop() {
+void test(){
 
     writeReadings(); // Write readings to SD card
     for(int i = 0;i<5;i++){
@@ -315,5 +224,49 @@ void loop() {
         // Output if the GPS is sleeping or not.
         GPS_SLEEP_FLAG ? debug_println("GPS is asleep") : debug_println("GPS is awake and workin'");
         delay(1000);
+    }
+
+}
+
+void areLoadsConnected(){
+    // Check to see if the loads are connected. Low means they are connected.
+    LOAD_ON_FLAG = digitalRead(LOAD_DETECT_PIN) ? 0 : 1;
+}
+
+void loop() {
+
+    areLoadsConnected();
+
+    if(LOAD_ON_FLAG == TRUE){ // If the load switch is 'on'
+        if(PREV_LOAD_STATE == FALSE){ // If the loads were just attached
+            newFile(); // Create a new file
+            float volts[3];
+            readVoltages(volts);
+            if(volts[0] < 1300){
+                // If the current battery voltage is less that 13volts then the starting level
+                // is less than 0kJ. The following is an approximation of energy level based only
+                // on the battery voltage. Its not super accurate
+                ENERGY_LEVEL = ((3600*volts[0])/100 - 46800);
+            }else{ENERGY_LEVEL = 0; // Otherwise assume it is fully charged
+            }
+            ENERGY_TIME_ELAPSED = 0; // Reset the clock used for energy measurments
+            SYSTEM_TIME_ELAPSED = 0;
+            PREV_LOAD_STATE = TRUE; // Reset the previous state flag
+        } // if( Loads just attached )
+
+        loadConnected();
+    }else{ // if the load is not connected, system is in standby
+        if(PREV_LOAD_STATE == TRUE){ // If the loads were just disconnected
+            //TODO
+            newFile(); // Create a new file
+    // Set battery ENERGY_LEVEL to a undefined value to indicate it is not being tracked anymore
+            ENERGY_LEVEL = 1; 
+            PREV_LOAD_STATE = FALSE;
+        }
+        standby();
+    }
+
+    if(WDT_FLAG == TRUE){
+        WDT_FLAG = FALSE;
     }
 }
