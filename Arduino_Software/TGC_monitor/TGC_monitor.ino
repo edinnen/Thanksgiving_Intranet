@@ -14,6 +14,8 @@
 #include <avr/sleep.h> //for sleeping
 #include <avr/power.h> //for sleeping deep
 #include <avr/wdt.h> //for waking up
+#include <OneWire.h> //Used for temperature sensors (BS18B20)
+#include <DallasTemperature.h> // Used for making temp sensors easier
 
 // what's the name of the hardware serial ports?
 #define GPSSerial Serial1 // The serial port used for the GPS communication
@@ -58,7 +60,7 @@ int NUM_NAPS_TAKEN = 0; // Number of naps taken during standby mode. One 'nap' i
 // Used when in standby mode for long waits between writes
 // use 37 naps for about 5min between SD writes, or 150 naps for ~20min. Note: not very accurate 
 const int NUM_NAPS_BETWEEN_SD_WRITES = 2;
-const int LOAD_INTERVAL = 2000; //milliseconds
+const int LOAD_INTERVAL = 5000; //milliseconds
 const int ENERGY_INTERVAL = 500;
 
 //************************** Analog Stuff **********************************
@@ -119,7 +121,14 @@ byte WDT_FLAG = FALSE;
 
 unsigned int ENERGY_LEVEL = 0;
 
+// Set up temperature sensors which are on a 'onewire' bus
+#define ONE_WIRE_BUS 2
+OneWire oneWire(ONE_WIRE_BUS);
+DallasTemperature sensors(&oneWire);
 
+DeviceAddress OUT_TEMP_ADDR = {0x28, 0x1E, 0xBF, 0xDC, 0x06, 0x00, 0x00, 0xB4};
+DeviceAddress IN_TEMP_ADDR  = {0x28, 0xFF, 0x06, 0xB2, 0x02, 0x17, 0x04, 0xEE};
+DeviceAddress BOX_TEMP_ADDR = {0x28, 0xFF, 0x31, 0xAB, 0x31, 0x17, 0x03, 0x29};
 
 //************************** Begin Functions **********************************
 

@@ -27,6 +27,8 @@ void writeReadings(){
     char *data = dataBuff; // Pointer that points at the data buffer
     unsigned long time = now();
 
+    readReference(); // Calibrate the ADC
+
     // Create buffers to hold the data as a string and pass the variables to the function
     char BattV[10], SolarV[10], HydroV[10];
     strVoltages(BattV, SolarV, HydroV);
@@ -36,14 +38,17 @@ void writeReadings(){
     strAmps(LoadA, BattA, SolarA, HydroA);
 
     // For testing
-    char outT[] = "10.1";
-    char inT[]  = "21.5";
-    char boxT[] = "23.3";
+   // char outT[] = "10.1";
+   // char inT[]  = "21.5";
+   // char boxT[] = "23.3";
+
+    char outTemp[10], inTemp[10], boxTemp[10];
+    strTemps(outTemp, inTemp, boxTemp);
     //int ENERGY_LEVEL = 121;
 
     // Merging and converting the data into one big string, 'data'
     sprintf(data, "%010lu,%s,%s,%s,%s,%s,%s,%s,%d,%s,%s,%s\n",
-            time, BattV, SolarV, HydroV, LoadA, BattA, SolarA, HydroA, ENERGY_LEVEL, outT, inT, boxT);
+            time, BattV, SolarV, HydroV, LoadA, BattA, SolarA, HydroA, ENERGY_LEVEL, outTemp, inTemp, boxTemp);
 
     // Output the data to the serial port
     debug_print(filename);
@@ -58,7 +63,7 @@ void writeReadings(){
     LOG.close();
 
     // reset the timmer used between SD card writes
-    //SYSTEM_TIME_ELAPSED = 0;
+    SYSTEM_TIME_ELAPSED = 0;
     return;
 }
 

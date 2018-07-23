@@ -5,6 +5,7 @@ void analog_setup(){
     digitalWrite(REF_PWR_PIN, LOW);
     pinMode(REF_READ_PIN, INPUT);
     readReference();
+    sensors.begin();
 }
 
 void readReference(){
@@ -21,8 +22,9 @@ void readReference(){
     VOLT_CALIBRATION = 4.096/readings*1024.0;
     //VOLT_CALIBRATION = VOLT_CALIBRATION/10;
     digitalWrite(REF_PWR_PIN, LOW);
-    debug_println("readReference");
-    debug_println(VOLT_CALIBRATION);
+    debug_print("uC Supply Voltage: ");
+    debug_print(VOLT_CALIBRATION);
+    debug_println("V");
 }
 
 void strVoltages(char Battstr[], char Solarstr[], char Hydrostr[]){
@@ -68,6 +70,25 @@ void readAmps(float amps[]){
     amps[1]  = (float)(analogRead(AMP_PIN[1]) - AMP_DC_OFFSET[1]) * AMP_MULTI[1];
     amps[2]  = (float)(analogRead(AMP_PIN[2]) - AMP_DC_OFFSET[2]) * AMP_MULTI[2];
     amps[3]  = (float)(analogRead(AMP_PIN[3]) - AMP_DC_OFFSET[3]) * AMP_MULTI[3];
+    return;
+}
+
+void strTemps(char outTemp[], char inTemp[], char boxTemp[]){
+    float temps[3];
+    readTemps(temps);
+
+    dtostrf(temps[0], 4, 2, outTemp);
+    dtostrf(temps[1], 4, 2, inTemp);
+    dtostrf(temps[2], 4, 2, boxTemp);
+    return;
+}
+
+void readTemps(float temps[]){
+    
+    sensors.requestTemperatures(); // Tell all sensors to begin a conversion
+    temps[0] = sensors.getTempC(OUT_TEMP_ADDR);
+    temps[1] = sensors.getTempC(IN_TEMP_ADDR);
+    temps[2] = sensors.getTempC(BOX_TEMP_ADDR);
     return;
 }
 
