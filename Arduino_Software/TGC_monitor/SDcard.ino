@@ -1,11 +1,15 @@
+/*
+Thanksgiving Cabin Power System Monitor
+
+SD setup and writing functions
+
+*/
+
 void SD_setup(){
 // see if the card is present and can be initialized:
-    pinMode(SDmasterSelect, OUTPUT);
-    digitalWrite(SDmasterSelect, LOW);
-    //pinMode(52, OUTPUT); //slave select
-    //if (!SD.begin(chipSelect, SPI_HALF_SPEED)) {
     if (!SD.begin(chipSelect)) {
         debug_println("Card failed, or not present");
+        // TODO something else here
     }else{
         debug_println("card initialized.");
     }
@@ -22,6 +26,7 @@ void SD_setup(){
 }
 void writeReadings(){
     // Take the various measurments and then write them to the SD card
+    debug_println("writeReadings");
 
     char dataBuff[150]; // Buffer used to output the sweet sweet data TODO set length to be reasonable
     char *data = dataBuff; // Pointer that points at the data buffer
@@ -30,25 +35,14 @@ void writeReadings(){
     readReference(); // Calibrate the ADC
 
     // Create buffers to hold the data as a string and pass the variables to the function
-    char BattV[10], SolarV[10], HydroV[10];
-    strVoltages(BattV, SolarV, HydroV);
-
-    // Create buffers to hold the data as a string and pass the variables to the function
-    char LoadA[10], BattA[10], SolarA[10], HydroA[10];
-    strAmps(LoadA, BattA, SolarA, HydroA);
-
-    // For testing
-   // char outT[] = "10.1";
-   // char inT[]  = "21.5";
-   // char boxT[] = "23.3";
-
+    char BattV[10], SolarV[10], BattA[10], LoadA[10];
+    strVoltAmps(BattV, SolarV, BattA, LoadA);
     char outTemp[10], inTemp[10], boxTemp[10];
     strTemps(outTemp, inTemp, boxTemp);
-    //int ENERGY_LEVEL = 121;
 
     // Merging and converting the data into one big string, 'data'
-    sprintf(data, "%010lu,%s,%s,%s,%s,%s,%s,%s,%d,%s,%s,%s\n",
-            time, BattV, SolarV, HydroV, LoadA, BattA, SolarA, HydroA, ENERGY_LEVEL, outTemp, inTemp, boxTemp);
+    sprintf(data, "%010lu,%s,%s,%s,%s,%d,%s,%s,%s\n",
+            time, BattV, SolarV, LoadA, BattA, ENERGY_LEVEL, outTemp, inTemp, boxTemp);
 
     // Output the data to the serial port
     debug_print(filename);
@@ -57,12 +51,14 @@ void writeReadings(){
 
     // Open the current data file, ouput the data, and close it up again
     LOG = SD.open(filename, FILE_WRITE); 
-    //if( !LOG.print(data) ) debug_println("Didn't print data");
-    if( !LOG.print(data) ) debug_println("Didn't print data");
+    if( !LOG.print(data) ){
+        debug_println("Didn't print data");
+        //TODO something else
+    }
     LOG.flush();
     LOG.close();
 
-    // reset the timmer used between SD card writes
+    // reset the timer used between SD card writes
     SYSTEM_TIME_ELAPSED = 0;
     return;
 }
@@ -77,6 +73,7 @@ void newFile(){
 
     time_t t = now(); // Put the current unit time into variable t
     unsigned long unix = t;
+    debug_println(unix);
     char buff[500]; // Create a buffer for the header text
     char *header = buff; // Pointer that points to the buffer
 
@@ -97,6 +94,7 @@ void newFile(){
     // Create the new filename including the system state
     if(LOAD_ON_FLAG == TRUE){
     sprintf(filename, "%8lx.ON", unix); // format option 'lx' is for a 'long hex' 
+    debug_println(filename);
     }else{
     sprintf(filename, "%8lx.OFF", unix);
     debug_println(filename);
@@ -108,7 +106,10 @@ void newFile(){
     if (! SD.exists(filename)) {
         // only open a new file if it doesn't exist
         LOG = SD.open(filename, FILE_WRITE); 
-    }else{debug_println("filename already exists");}
+    }else{
+        debug_println("filename already exists");
+        // TODO something here
+        }
     if (! LOG) {
         debug_println("couldnt create file");
     }
