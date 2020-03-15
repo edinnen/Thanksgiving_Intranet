@@ -56,8 +56,8 @@ time_t setRTCtime(){
     // Get the current RTC time
     DateTime dtime = rtc.now();
     //setTime(dtime.hour(), dtime.minute(), dtime.second(), dtime.day(), dtime.month(), dtime.year());
-    debug_print("setRTCtime: ");
-    debug_println(dtime.unixtime());
+    debug_println("setRTCtime: ");
+    //debug_println(dtime.unixtime());
     humanTime();
 
     // Check to see if we need to sync with the GPS
@@ -80,74 +80,6 @@ time_t setWrongTime(){
     return now();
 }
 
-/*
-byte setGPStime(){
-    // Set system time to the time given by the GPS (if available)
-    // GPS can be finicky and takes a while to warm up and find satalites.
-    int year;
-    // TODO should do this with a time object of some sort
-    byte month, day, hour, minute, second;
-
-    // GPSdateTime returns 1 when it fails to parse the time from the GPS
-    if(GPSdateTime(year, month, day, hour, minute, second) != 0 ){
-        debug_println("GPSdateTime didn't work!");
-        return 1;
-        //setSyncInterval(10);
-    }else{
-       // Set RTC to the time provided by the GPS
-       rtc.adjust(DateTime(year, month, day, hour, minute, second));
-       DateTime now = rtc.now();
-       LAST_GPS_FIX = now.unixtime();
-       debug_print("Set RTC to GPS time: ");
-       debug_println(now.unixtime());
-       //rtc.adjust(DateTime(year, month, day, hour, minute, second)); // Set the RTC time
-       //setSyncProvider(setRTCtime);
-       //setSyncInterval(RTC_SYNC_INTERVAL);
-    }
-    return 0;
-} // setGPStime
-
-int GPSdateTime(int &year, byte &month, byte &day, byte &hour, byte &minute, byte &second){
-    // This function talks to the GPS and tries to parse out the time.
-    // It updates the provided variable pointers. TODO make it work with a time struct
-    // returns 0 for success and 1 otherwise
-    unsigned long fix_age;
-    if(GPS_SLEEP_FLAG == 1){
-        // If the GPS was asleep, wake it up
-        digitalWrite(GPS_EN_PIN, HIGH);
-        delay(100);
-        GPSSerial.println("$PMTK101*32"); // Wake up the GPS 'Hot Start'
-        GPS_SLEEP_FLAG = 0;
-        delay(100);
-    }
-    debug_println("Checking the GPS time...");
-    for(unsigned long start = millis(); millis() - start < 1000;){ //Try for one second
-        while(GPSSerial.available()){
-            // read a char into the NMEA encoder buffer. Test if it is a complete reading yet
-            if(gps.encode(GPSSerial.read())){
-                debug_println("encoded");
-                gps.crack_datetime(&year, &month, &day,
-                    &hour, &minute, &second, NULL, &fix_age);
-                hour -= 7; //Adjust for timezone to Vancouver time
-               if(fix_age < 500){ // Make sure the time is accurate 
-                   GPSSerial.println("$PMTK161,0*28"); // Enter standby mode
-                   delay(100);
-                   digitalWrite(GPS_EN_PIN, LOW); // Good job GPS! Sleep now
-                   GPS_SLEEP_FLAG = 1;
-                   return 0;  // Return sucess!
-               }else{
-                   debug_println("old data");
-                   debug_println(fix_age);
-               }
-            }
-        }
-    }
-    // TODO we never put the GPS to sleep if it never gets the time.
-    // We need to give up eventually. Need a counter or something
-    return 1; // failed :(
-} // GPSdateTime
-*/
-
 byte setGPStime(){
     // This function talks to the GPS and tries to parse out the time.
     // She then updates the RTC time
@@ -160,42 +92,69 @@ byte setGPStime(){
         // If the GPS was asleep, wake it up
         digitalWrite(GPS_EN_PIN, HIGH);
         delay(100);
-        GPSSerial.println("$PMTK101*32"); // Wake up the GPS 'Hot Start'
+        //GPSSerial.println("$PMTK101*32"); // Wake up the GPS 'Hot Start'
         GPS_SLEEP_FLAG = 0;
-        delay(100);
+        //delay(100);
     }
     debug_println("Checking the GPS time...");
     //for(unsigned long start = millis(); millis() - start < 1000;){ //Try for one second
+    //if(!GPSSerial.available()) return 1; // If nothing available, peace out
 
-    if(!GPSSerial.available()) return 1; // If nothing available, peace out
-    unsigned long start = millis();
-    while(GPSSerial.available()){
-        // read a char into the NMEA encoder buffer. Test if it is a complete reading yet
-        if(gps.encode(GPSSerial.read())){
-            debug_println("encoded");
-            gps.crack_datetime(&year, &month, &day, &hour, &minute, &second, NULL, &fix_age);
-            hour -= 7; //Adjust for timezone to Vancouver time
-            break; // Got it so break the while loop
-        }
-        if(millis() - start > 1000) return 1; // Try for one second
+    // flush the buffer. This discards old data
+    while( GPSSerial.available()){
+        GPSSerial.read();
     }
 
-    // If we got here that should mean we have good data
+    debug_println("Trying GPS for 1 sec");
+    unsigned long start = millis();
 
-   if(fix_age < 500){ // Make sure the time is accurate 
-       GPSSerial.println("$PMTK161,0*28"); // Enter standby mode
-       delay(100);
-       digitalWrite(GPS_EN_PIN, LOW); // Good job GPS! Sleep now
-       GPS_SLEEP_FLAG = 1;
-       // Set RTC to the time provided by the GPS
-       rtc.adjust(DateTime(year, month, day, hour, minute, second));
-       DateTime now = rtc.now();
-       LAST_GPS_FIX = now.unixtime();
+    while(millis() - start < 1000){ // Try for some time
+        while(GPSSerial.available()) gps.encode(GPSSerial.read());
+    }
+    /*while(millis() - start < 5000){ // Try for some time
+        // read a char into the NMEA encoder buffer. Test if it is a complete reading yet
+        if(GPSSerial.available()){
+            if(gps.encode(GPSSerial.read())){
+                debug_println("encoded");
+                gps.crack_datetime(&year, &month, &day, &hour, &minute, &second, NULL, &fix_age);
+                hour -= 7; //Adjust for timezone to Vancouver time
+                break; // Got it so break the while loop
+            }
+        }
+    }*/
+
+   // Either we timed out or we got some data! Lets check
+   gps.crack_datetime(&year, &month, &day, &hour, &minute, &second, NULL, &fix_age);
+   if(fix_age < 1000){ // Make sure the time is accurate 
+        debug_println("encoded");
+        //gps.crack_datetime(&year, &month, &day, &hour, &minute, &second, NULL, &fix_age);
+        hour -= 7; //Adjust for timezone to Vancouver time
+        debug_println(fix_age);
+        //GPSSerial.println("$PMTK161,0*28"); // Enter standby mode
+        //delay(100);
+        digitalWrite(GPS_EN_PIN, LOW); // Good job GPS! Sleep now
+        GPS_SLEEP_FLAG = 1;
+        // Set RTC to the time provided by the GPS
+        DateTime now = rtc.now(); // Old time
+        unsigned long old_unix = now.unixtime();
+        rtc.adjust(DateTime(year, month, day, hour, minute, second)); // Set to new time
+        now = rtc.now(); // update DateTime with new time
+        LAST_GPS_FIX = now.unixtime();
+
+       // Check to see if the time has changed substantially. 
+       // Both numbers are unsigned so we need to see which one is larger so 
+       // we know how to subtract them properly
+       if( ((LAST_GPS_FIX > old_unix) ? LAST_GPS_FIX - old_unix : old_unix - LAST_GPS_FIX) > 60){
+           debug_print("Big change to RTC from GPS: ");
+           debug_println(now.unixtime() - old_unix);
+           newFile();
+       }
        debug_print("Set RTC to GPS time: ");
        debug_println(now.unixtime());
+       humanTime();
        return 0;  // Return sucess!
    }else{
-       debug_println("old data");
+       debug_println("old or no data");
        debug_println(fix_age);
        return 1;
    }

@@ -74,8 +74,8 @@ bool GPS_SLEEP_FLAG = 1;
 // GPS has an enable pin which puts it to sleep. Put low to disable
 byte GPS_EN_PIN = 36;
 // Both sync intervals are in seconds. Interval depends if we are debugging or not
-const unsigned int GPS_SYNC_INTERVAL = DEBUG_SPEEDUP_TIME ? 60 : 60*60; // How frequenty to update time with GPS
-const unsigned int RTC_SYNC_INTERVAL = DEBUG_SPEEDUP_TIME ? 30 : 5*60; // How frequently to update time with RTC
+const unsigned int GPS_SYNC_INTERVAL = DEBUG_SPEEDUP_TIME ? 20 : 60*60; // How frequenty to update time with GPS
+const unsigned int RTC_SYNC_INTERVAL = DEBUG_SPEEDUP_TIME ? 10 : 5*60; // How frequently to update time with RTC
 //const unsigned int RTC_SYNC_INTERVAL = 30; // How frequently to update time with RTC
 
 // elapsedMillis creates a background timer that constantly counts up. Much better to use these
@@ -106,7 +106,7 @@ const byte REF_READ_PIN = A0;
 
 // Load detect pin detects when the Big Red Switch connects loads. This pulls the negative load bus bar low.
 const byte LOAD_DETECT_PIN = 44;
-const byte SOLAR_VOLATGE_PIN = A8;
+const byte SOLAR_VOLATGE_PIN = A10;
 // Solar voltage is measured using a voltage divider circuit
 // Solar: R1=1400, R2=8870, multiplyer is  7.3367. Max voltage allowed on input is then: 36.7V
 const float SOLAR_VOLT_MULTI = 7.3357; 

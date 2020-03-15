@@ -47,9 +47,11 @@ void readReference(){
     VOLT_CALIBRATION = 4.096/readings*1024.0;
     //VOLT_CALIBRATION = VOLT_CALIBRATION/10;
     digitalWrite(REF_PWR_PIN, LOW); // turn off the reference to save power
+    /*
     debug_print("uC Supply Voltage: ");
     debug_print(VOLT_CALIBRATION);
     debug_println("V");
+    */
 }
 
 // Fetches the voltages and currents from the INA219s and solar voltage divider
@@ -77,7 +79,7 @@ void readPower(float Power[]){
         // Put in some placeholder data
         Power[0] = -69;
         Power[1] = -42.0;
-        debug_println("Battery INA219 not responding");
+        //debug_println("Battery INA219 not responding");
     }else{
         // Shit should be good so fetch that data!
         Power[0] = BATT_MONITOR.busVoltage();
@@ -87,7 +89,7 @@ void readPower(float Power[]){
         // This means we can't talk to the IC. 
         // Put in some placeholder data
         Power[2] = -69;
-        debug_println("Load INA219 not responding");
+        //debug_println("Load INA219 not responding");
     }else{
         // Shit should be good so fetch that data!
         Power[2] = LOAD_MONITOR.shuntCurrent();

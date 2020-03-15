@@ -23,7 +23,7 @@
 #endif
 
 // what's the name of the hardware serial ports?
-#define GPSSerial Serial1 // The serial port used for the GPS communication
+#define GPSSerial Serial2 // The serial port used for the GPS communication
 //#define debug     Serial  // Serial port for communicating over USB
 
 TinyGPS gps;
