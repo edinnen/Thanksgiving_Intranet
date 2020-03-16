@@ -27,6 +27,9 @@ void analog_setup(){
     LOAD_MONITOR.configure(INA219::RANGE_16V, INA219::GAIN_1_40MV, INA219::ADC_64SAMP, INA219::ADC_64SAMP, INA219::CONT_SH_BUS);
     // calibrate with our values
     LOAD_MONITOR.calibrate(LOAD_SHUNT_R, LOAD_SHUNT_MAX_V, LOAD_BUS_MAX_V, LOAD_MAX_CURRENT);
+
+    // Now that our sensors are fired up lets check the battery
+    estimateBattState();
 }
 
 // Takes a reading off the precision voltage source wired to the arduino
@@ -52,33 +55,35 @@ void readReference(){
     debug_print(VOLT_CALIBRATION);
     debug_println("V");
     */
+
 }
 
 // Fetches the voltages and currents from the INA219s and solar voltage divider
 // and outputs to a set of strings
 void strVoltAmps(char BattVstr[], char SolarVstr[], char BattAstr[], char LoadAstr[]){
-    float Powers[3];
+    float Powers[4];
     float SolarVolt;
 
-    readPower(Powers);
+    readVoltAmp(Powers);
     readSolarVoltage(&SolarVolt);
 
     // Convert the floating point number to a char array stored in the provided variable
     // sprintf doesn't work with floats on arduino. dumb. Have to use this function by AVR
+    // The load voltage should always match the battery voltage so lets skip it for this
     dtostrf(Powers[0], 4, 2, BattVstr);
     dtostrf(Powers[1], 4, 2, BattAstr);
-    dtostrf(Powers[2], 4, 2, LoadAstr);
+    dtostrf(Powers[3], 4, 2, LoadAstr);
     dtostrf(SolarVolt, 4, 2, SolarVstr);
     return;
 }
 
 // Reads the voltage and current on both INA219s
-void readPower(float Power[]){
+void readVoltAmp(float Power[]){
     if(BATT_MONITOR.shuntVoltageRaw() == -1){
         // This means we can't talk to the IC. 
         // Put in some placeholder data
-        Power[0] = -69;
-        Power[1] = -42.0;
+        Power[0] = 0;
+        Power[1] = 0;
         //debug_println("Battery INA219 not responding");
     }else{
         // Shit should be good so fetch that data!
@@ -88,11 +93,13 @@ void readPower(float Power[]){
     if(LOAD_MONITOR.shuntVoltageRaw() == -1){
         // This means we can't talk to the IC. 
         // Put in some placeholder data
-        Power[2] = -69;
+        Power[2] = 0;
+        Power[3] = 0;
         //debug_println("Load INA219 not responding");
     }else{
         // Shit should be good so fetch that data!
-        Power[2] = LOAD_MONITOR.shuntCurrent();
+        Power[2] = LOAD_MONITOR.busVoltage();
+        Power[3] = LOAD_MONITOR.shuntCurrent();
     }
     return;
 }
@@ -126,6 +133,26 @@ void readTemps(float temps[]){
     return;
 }
 
+void strPower(char generated[], char used[], char battPercent[]){
+    energyUpdate();
+    BATT_ENERGY += ENERGY_GENERATED; // BATT_ENERGY is just the long term sum
+    if(BATT_ENERGY > BATT_TOTAL_CAPACITY){
+        BATT_ENERGY = BATT_TOTAL_CAPACITY;
+        debug_println("Battery Full!");
+    }
+
+    float timeElapsed = float(SYSTEM_TIME_ELAPSED)/1000;
+    float fbattPer = float(BATT_ENERGY)/float(BATT_TOTAL_CAPACITY)*100;
+
+    dtostrf( (ENERGY_USED/timeElapsed)      , 4, 2, used);
+    dtostrf( (ENERGY_GENERATED/timeElapsed) , 4, 2, generated);
+    dtostrf( fbattPer                       , 4, 2, battPercent);
+
+    // Reset the energy variables 
+    ENERGY_USED = 0.0;
+    ENERGY_GENERATED = 0.0;
+}
+
 void energyUpdate(){
     // Update the current energy level of the battery by performing power tracking
     // Energy level in this context means the amount of energy that has been used from the 
@@ -133,20 +160,29 @@ void energyUpdate(){
     // be ENERGY_LEVEL <= 0 since once the battery is full it will stop charging.
     // Energy level is kept in kilojoules (kJ)
 
+    float Powers[4];
+    // battV, battA, LoadV, LoadA
+    readVoltAmp(Powers);
+    // Energy used is just the power to the loads times time
+    ENERGY_USED += Powers[2]*Powers[3]*float(ENERGY_TIME_ELAPSED)/1000.0;
+    // Energy generated is the power going into the battery plus the power used times time
+    ENERGY_GENERATED += Powers[0]*((-1.0)*Powers[1]+Powers[3])*float(ENERGY_TIME_ELAPSED)/1000.0;
     ENERGY_TIME_ELAPSED = 0; // Reset the timer between readings
-
-    // We can never have the ENERGY_LEVEL be greater than 0 (battery full) 
-    if(ENERGY_LEVEL > 0) ENERGY_LEVEL = 0;
 
 }// energyUpdate()
 
-// TODO remove
-void testVoltage(){
-    int batt, solar, hydro;
-    //voltReadings(batt, solar, hydro);
-    debug_println("Battery, Solar, Hydro");
-    debug_println(batt);
-    debug_println(solar);
-    debug_println(hydro);
-    //debug_println(sprintf("%d, %d, %d", batt, solar, hydro));
+// If the current battery voltage is less than 13volts then the starting level
+// is less than 0kJ. The following is an approximation of energy level based only
+// on the battery voltage. Its not super accurate
+// I tried to estimate the voltage/capacity relationship from the spec sheet.
+// This equation is my best guess at the linear fit. Don't trust it
+void estimateBattState(){
+
+    float battery_voltage[4];
+    readVoltAmp(battery_voltage);
+    if(battery_voltage[0] < 13.00){
+        BATT_ENERGY = (unsigned long)(((battery_voltage[0] - 11.75)/1.35) * float(BATT_TOTAL_CAPACITY));
+    }else{
+        BATT_ENERGY = BATT_TOTAL_CAPACITY; // Otherwise assume it is fully charged
+    }
 }

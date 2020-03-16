@@ -34,7 +34,7 @@ Good things take time. Be patient.
 
 // what's the name of the hardware serial ports?
 #define GPSSerial Serial2 // The serial port used for the GPS communication
-#define RPiSerial Serial3 // Serial port wired to the RPi (if present)
+#define RPiSerial Serial // Serial port wired to the RPi (if present)
 //#define debug     Serial  // Serial port for communicating over USB
 
 
@@ -74,7 +74,7 @@ bool GPS_SLEEP_FLAG = 1;
 // GPS has an enable pin which puts it to sleep. Put low to disable
 byte GPS_EN_PIN = 36;
 // Both sync intervals are in seconds. Interval depends if we are debugging or not
-const unsigned int GPS_SYNC_INTERVAL = DEBUG_SPEEDUP_TIME ? 20 : 60*60; // How frequenty to update time with GPS
+const unsigned int GPS_SYNC_INTERVAL = DEBUG_SPEEDUP_TIME ? 60 : 60*60; // How frequenty to update time with GPS
 const unsigned int RTC_SYNC_INTERVAL = DEBUG_SPEEDUP_TIME ? 10 : 5*60; // How frequently to update time with RTC
 //const unsigned int RTC_SYNC_INTERVAL = 30; // How frequently to update time with RTC
 
@@ -129,6 +129,16 @@ INA219 BATT_MONITOR(0x40);
 // Create a load monitor object with the I2C address. Solder on A0 = 0x41
 INA219 LOAD_MONITOR(0x41);
 
+// Keep track of energy (joules) used/produced
+float ENERGY_GENERATED = 0.0;
+float ENERGY_USED      = 0.0;
+// Battery capacity is 2 batteries with 125Ahr @ 12V. Convert to J
+// 2 * 12 * 125 * 3600
+// 10,800,000 J
+const unsigned long int BATT_TOTAL_CAPACITY =10800000;
+// The approximate battery energy
+unsigned long int BATT_ENERGY = BATT_TOTAL_CAPACITY;
+
 // Flags for indicating if the load is connected and if the state changed
 // Must both be the same value (true or false) otherwise opens a file twice (TODO)
 bool LOAD_ON_FLAG = TRUE;
@@ -148,8 +158,6 @@ File LOG;
 
 // Flag is set by the watch dog timer (WDT)
 byte WDT_FLAG = FALSE;
-
-unsigned int ENERGY_LEVEL = 0; // TODO required?
 
 // Set up temperature sensors which are on a 'onewire' bus
 #define ONE_WIRE_BUS 34
@@ -255,7 +263,7 @@ void loadConnected(){
     //if(Serial.available()) pythonTalk(); 
 
     // Update the energy state every interval
-    //if(ENERGY_TIME_ELAPSED > ENERGY_INTERVAL) energyUpdate();  // TODO
+    if(ENERGY_TIME_ELAPSED > 1000) energyUpdate();
 
     // Write to the SD card every 'LOAD_INTERVAL'
     if(SYSTEM_TIME_ELAPSED > LOAD_INTERVAL) writeReadings();
@@ -303,18 +311,8 @@ void loop() {
         if(PREV_LOAD_STATE == FALSE){ // If the loads were just attached
             debug_println("Loads were just attached...");
             setGPStime(); // good time to sync RTC with GPS
+            estimateBattState();
             newFile(); // Create a new file
-            float battery_voltage[4];
-            readPower(battery_voltage);
-            if(battery_voltage[0] < 13.00){
-                // If the current battery voltage is less than 13volts then the starting level
-                // is less than 0kJ. The following is an approximation of energy level based only
-                // on the battery voltage. Its not super accurate
-                ENERGY_LEVEL = ((3600*battery_voltage[0]) - 46800);
-                debug_print("Energy Level: ");
-                debug_println(ENERGY_LEVEL);
-            }else{ENERGY_LEVEL = 0; // Otherwise assume it is fully charged
-            }
             ENERGY_TIME_ELAPSED = 0; // Reset the clock used for energy measurments
             SYSTEM_TIME_ELAPSED = 0;
             PREV_LOAD_STATE = TRUE; // Reset the previous state flag
@@ -327,7 +325,7 @@ void loop() {
             //TODO
             newFile(); // Create a new file
     // Set battery ENERGY_LEVEL to a undefined value to indicate it is not being tracked anymore
-            ENERGY_LEVEL = 1; 
+            BATT_ENERGY = 1; 
             PREV_LOAD_STATE = FALSE;
         }
         standby();

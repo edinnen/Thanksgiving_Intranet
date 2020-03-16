@@ -8,23 +8,27 @@ keeping.
 
 I'm using a few different time libraries with very similar time object things
 which are not compatible with each other. time_t and DateTime are not the same!
-TODO I should be able to make this a lot less shitty
+The function 'now()' returns the system time, in unix time, (which is synced
+periodically with the RTC/GPS). This is what should be used to get the time 
+elsewhere
+rtc.now() returns a time object from the RTC. Not a unix time stamp. It is 
+used in this file for RTC stuff
 */
 
 void time_setup(){
    
    // Setup the GPS first
    // Power up the GPS
+    pinMode(GPS_EN_PIN, OUTPUT);
     digitalWrite(GPS_EN_PIN, HIGH);
-    delay(50);
+    delay(100);
    // 9600 baud is the default rate for the Ultimate GPS
     GPSSerial.begin(9600);
     delay(50);
     // Warm restart the GPS
-    GPSSerial.println("$PMTK101*32");
+    //GPSSerial.println("$PMTK101*32"); //TODO required?
     // Only output the RMC data
     GPSSerial.println("$PMTK314,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0*29");
-    delay(50);
 
     // Now lets setup the real time clock
     if( !rtc.begin()){// TODO doesn't catch it...
@@ -43,11 +47,14 @@ void time_setup(){
     }
     // TimeLib.h provides an automatic way to sync time.
     // The SyncProvider will be set automatically every INTERVAL
-    // The setRTCtime function has its own system to decide if we need the GPS
     setSyncProvider(setRTCtime); // Handy library for keeping time.
     setSyncInterval(RTC_SYNC_INTERVAL);
-    //now();
-    //setRTCtime(); // Set system time based on RTC
+
+    // Let's try to get a good GPS reading before continuing
+    unsigned long start = millis();
+    while(millis() - start < 10000){ // Try for some time
+        if(!setGPStime()) break; 
+    }
 }
 
 time_t setRTCtime(){
@@ -111,17 +118,6 @@ byte setGPStime(){
     while(millis() - start < 1000){ // Try for some time
         while(GPSSerial.available()) gps.encode(GPSSerial.read());
     }
-    /*while(millis() - start < 5000){ // Try for some time
-        // read a char into the NMEA encoder buffer. Test if it is a complete reading yet
-        if(GPSSerial.available()){
-            if(gps.encode(GPSSerial.read())){
-                debug_println("encoded");
-                gps.crack_datetime(&year, &month, &day, &hour, &minute, &second, NULL, &fix_age);
-                hour -= 7; //Adjust for timezone to Vancouver time
-                break; // Got it so break the while loop
-            }
-        }
-    }*/
 
    // Either we timed out or we got some data! Lets check
    gps.crack_datetime(&year, &month, &day, &hour, &minute, &second, NULL, &fix_age);

@@ -39,10 +39,13 @@ void writeReadings(){
     strVoltAmps(BattV, SolarV, BattA, LoadA);
     char outTemp[10], inTemp[10], boxTemp[10];
     strTemps(outTemp, inTemp, boxTemp);
+    // The power being generated/used and the percentage of batt left
+    char generated[10], used[10], battPercent[10];
+    strPower(generated, used, battPercent);
 
     // Merging and converting the data into one big string, 'data'
-    sprintf(data, "%010lu,%s,%s,%s,%s,%d,%s,%s,%s\n",
-            time, BattV, SolarV, LoadA, BattA, ENERGY_LEVEL, outTemp, inTemp, boxTemp);
+    sprintf(data, "%010lu,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n",
+            time, BattV, SolarV, LoadA, BattA, battPercent, generated, used, outTemp, inTemp, boxTemp);
 
     // Output the data to the serial port
     debug_print(filename);
@@ -71,7 +74,7 @@ void newFile(){
     // Fat32 limits file names to 8 characters plus a 3 character extension
     // Extensions are '.on' when the loads are connected. '.off' otherwise
 
-    time_t t = now(); // Put the current unit time into variable t
+    time_t t = now(); // Put the current unix time into variable t
     unsigned long unix = t;
     debug_println(unix);
     char buff[500]; // Create a buffer for the header text
@@ -87,9 +90,9 @@ void newFile(){
         "#=(A8/86400)+25569+(-7/24)\n"
         "#or Google it\n"
         "#Created: %04d-%02d-%02d at %02d:%02d:%02d or %010lu in UNIX time\n"
-        "#Timestamp,Battery Voltage,Solar Voltage,Hydro Voltage,"
-        "Battery Amps, Solar Amps,Hydro Amps,Load Amps,Battery Energy State,"
-        "Outside Temp,Cabin Temp,Battery Temp\n", year(t), month(t), day(t), hour(t), minute(t), second(t), t);
+        "#Timestamp,Battery Voltage (V),Solar Voltage (V),Battery Amps (A),"
+        "Load Amps (A),Battery percentage (%), Power into Battery (w), Power to loads (w),"
+        "Outside Temp (C),Cabin Temp (C),Battery Temp (C)\n", year(t), month(t), day(t), hour(t), minute(t), second(t), unix);
     
     // Create the new filename including the system state
     if(LOAD_ON_FLAG == TRUE){
