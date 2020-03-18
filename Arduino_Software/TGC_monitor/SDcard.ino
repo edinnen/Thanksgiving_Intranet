@@ -58,6 +58,9 @@ void writeReadings(){
         debug_println("Didn't print data");
         //TODO something else
     }
+#ifdef RPI_ENABLE
+    RPiSerial.println(data);
+#endif
     LOG.flush();
     LOG.close();
 
@@ -96,7 +99,7 @@ void newFile(){
     
     // Create the new filename including the system state
     if(LOAD_ON_FLAG == TRUE){
-    sprintf(filename, "%8lx.ON", unix); // format option 'lx' is for a 'long hex' 
+    sprintf(filename, "%8lx.ONN", unix); // format option 'lx' is for a 'long hex'
     debug_println(filename);
     }else{
     sprintf(filename, "%8lx.OFF", unix);

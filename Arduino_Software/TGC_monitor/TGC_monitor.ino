@@ -42,13 +42,15 @@ Good things take time. Be patient.
 // set to 0 for production numbers
 #define DEBUG_SPEEDUP_TIME 1
 
-// set to 1 for test temperature sensor
-// set to 0 for actual temperature sensors
+// Define for test temperature sensor
+// comment out for actual temperature sensor
 #define DEBUG_TEMPERATURE 1
+
+#define RPI_ENABLE 
 
 // Debug macro. If DEBUG is defined, debug functions will be replaced with
 //output to the USB serial. Otherwise they will be skipped.
-#define DEBUG 1
+//#define DEBUG 
 #ifdef DEBUG
 #define debug_print(x) (Serial.print(x))
 #define debug_println(x) (Serial.println(x))
@@ -184,6 +186,10 @@ void setup() {
 // Set the baud rate between the arduino and computer. 115200 is nice and fast!
     Serial.begin(115200);
 #endif
+#ifdef RPI_ENABLE
+    RPi_setup();
+#endif
+
    time_setup();
    analog_setup();
    SD_setup();
@@ -261,6 +267,7 @@ void loadConnected(){
 
     // If there is serial data waiting, goto function
     //if(Serial.available()) pythonTalk(); 
+    readCmd();
 
     // Update the energy state every interval
     if(ENERGY_TIME_ELAPSED > 1000) energyUpdate();
@@ -292,7 +299,7 @@ void test(){
         //testVoltage();
         humanTime(); // Print the human readable time
         // Output if the GPS is sleeping or not.
-        GPS_SLEEP_FLAG ? debug_println("GPS is asleep") : debug_println("GPS is awake and workin'");
+        //GPS_SLEEP_FLAG ? debug_println("GPS is asleep") : debug_println("GPS is awake and workin'");
         delay(1000);
     }
 
