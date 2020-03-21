@@ -3,3 +3,5 @@
 #To convert the date in cell 'A8' to an excel date serial number in Vancover time use:
 #=(A8/86400)+25569+(-7/24)
 #or Google it
+#Created: 2019-07-31 at 19:04:42 or 1564599882 in UNIX time
+#Timestamp,Battery Voltage,Solar Voltage,Hydro Voltage,Battery Amps, Solar Amps,Hydro Amps,Load Amps,Battery Energy State,Outside Temp,Cabin Temp,Battery Temp

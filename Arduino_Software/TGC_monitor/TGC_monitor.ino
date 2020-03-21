@@ -156,6 +156,12 @@ char *filename = (char *) malloc(15);
 // the logging file
 File LOG;
 
+
+//************************** RPi Py talk stuff **********************************
+const byte numChars = 14;
+char receivedChars[numChars];
+bool newData = false;
+
 //************************** Other **********************************
 
 // Flag is set by the watch dog timer (WDT)
@@ -186,6 +192,7 @@ void setup() {
 // Set the baud rate between the arduino and computer. 115200 is nice and fast!
     Serial.begin(115200);
 #endif
+
 #ifdef RPI_ENABLE
     RPi_setup();
 #endif
@@ -267,7 +274,10 @@ void loadConnected(){
 
     // If there is serial data waiting, goto function
     //if(Serial.available()) pythonTalk(); 
-    readCmd();
+#ifdef RPI_ENABLE
+    if(RPiSerial.available()) readFromPy();
+    if(newData == true) readCmd();
+#endif
 
     // Update the energy state every interval
     if(ENERGY_TIME_ELAPSED > 1000) energyUpdate();

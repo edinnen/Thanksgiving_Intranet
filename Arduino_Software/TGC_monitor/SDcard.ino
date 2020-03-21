@@ -59,7 +59,8 @@ void writeReadings(){
         //TODO something else
     }
 #ifdef RPI_ENABLE
-    RPiSerial.println(data);
+    RPiSerial.print("Live data: ");
+    RPiSerial.print(data);
 #endif
     LOG.flush();
     LOG.close();
