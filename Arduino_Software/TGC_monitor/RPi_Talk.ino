@@ -9,76 +9,66 @@ Transfering files and live data!
 
 void RPi_setup(){
 
-RPiSerial.begin(57600);
+RPiSerial.begin(115200);
 RPiSerial.setTimeout(5000);
 }
 
-//void serialEvent(){
+// Called when a full command has been parsed
 void readCmd(){
-    //RPiSerial.println("readCmd");
-    //RPiSerial.flush();
-    //RPiSerial.println("Checking for Serial data...");
-    //if(!RPiSerial.available()) return;
-    //RPiSerial.print("readCmd! ");
-    //RPiSerial.println(receivedChars);
     newData = false;
+    // If the command is more than one char, it is hopefully a filename
     if(strlen(receivedChars) > 1){
             RPiSerial.print("<1>");
-            //RPiSerial.flush();
             printFile();
             return;
+        // strcmp checks to see if the strings are equal
     }else if(strcmp(receivedChars, "2") == 0){
             RPiSerial.print("<2>");
-            //RPiSerial.flush();
             printRootDirectory();
             return;
     }else if(strcmp(receivedChars, "3") == 0){
             RPiSerial.print("<3>");
-            //RPiSerial.flush();
+            singleLiveData();
+            return;
+    }else if(strcmp(receivedChars, "4") == 0){
+            RPiSerial.print("<4>");
+            // toggle the stream
+            STREAM_DATA_PY = STREAM_DATA_PY ? false : true;
+            STREAM_DATA_ELAPSED = 0;
+            return;
+    }else if(strcmp(receivedChars, "5") == 0){
+            RPiSerial.print("<5>");
+            RPiSerial.print('<');
+            RPiSerial.print(now());
+            RPiSerial.println('>');
+            return;
+    }else if(strcmp(receivedChars, "6") == 0){
+            RPiSerial.print("<6>");
+            // Dump settings TODO
             return;
     }else{
-        RPiSerial.println("$$ uC Didn't read cmd properly");
+        RPiSerial.print("$$ uC Didn't read cmd properly: ");
+        RPiSerial.println(receivedChars);
         return;
     }
-
-    //int cmd = 0;
-
-    //unsigned long start = millis();
-    //while(millis() - start < 1000){ // Try for some time
-
-        //if(RPiSerial.find('<')){
-            //cmd = RPiSerial.parseInt();
-            //while(RPiSerial.available()) RPiSerial.read();
-
-            /*
-            switch(receivedChars){
-                case '1':
-                    RPiSerial.println("<1>\n");
-                    RPiSerial.flush();
-                    return;
-                case '2':
-                    RPiSerial.println("<2>\n");
-                    RPiSerial.flush();
-                    printRootDirectory();
-                    return;
-                case '3':
-                    RPiSerial.println("<3>\n");
-                    RPiSerial.flush();
-                    printFile();
-                    return;
-                default:
-                    RPiSerial.println("<0>\n");
-                    return;
-            }
-            */
-        //}
-    //}
-
 }
 
+void singleLiveData(){
+    char data[150];
+    generateDataString(data);
+    RPiSerial.print('<');
+    RPiSerial.print(data);
+    RPiSerial.print('>');
+}
 
+// Prints out the root directory of the SD card
 void printRootDirectory() {
   File dir = SD.open("/");
+
+  if( !dir ){
+      RPiSerial.println("$$ Couldn't open SD card root");
+      return;
+  }
 
   while (true) {
     File entry =  dir.openNextFile();
@@ -86,28 +76,20 @@ void printRootDirectory() {
     RPiSerial.println(entry.name());
     entry.close();
   }
+  // I'm done command
   RPiSerial.println("<>");
 }
 
 
-//void readStrRPi(char output[]){
+// reads data from the RPiSerial and parses out commands
+// sets a flag when complete indicating we should do something
 void readFromPy(){
+    // static keeps these values between function calls
     static bool recvInProgress = false;
     static byte ndx = 0;
-    //byte numChars = 13; // 12 for name, one for termination
     char rc;
-    //strcpy(output, "Bad read");
-
-    //unsigned long start = millis();
-    // Wait until the string starts coming in
-    //while(millis() - start < 1000 && !RPiSerial.available());
-
-    //while (RPiSerial.available()) {
-    //while(millis() - start < 1000){
     while( RPiSerial.available() && newData == false){
         rc = RPiSerial.read();
-        //RPiSerial.println(rc);
-
         if(recvInProgress == true){
             if (rc != '>'){
                 receivedChars[ndx] = rc;
@@ -122,15 +104,14 @@ void readFromPy(){
                 newData = true;
             }
         }else if (rc == '<') recvInProgress = true;
-
-        //delay(1); // This goes too fast for python! Gotta slow it down
     }
     return;
 }
 
+// function called when a filename is parsed
+// prints out the file line by line then sends a final
+// I'm done signal to indicate a good write/read
 void printFile(){
-    //char dataFile[] = "5E7334CF.ONN";
-    //readStrRPi(dataFile);
 
     File fileObj = SD.open(receivedChars);
 
@@ -138,16 +119,11 @@ void printFile(){
         while (fileObj.available()) {
         RPiSerial.write(fileObj.read());
     }
-    // tell python I am done
-    //RPiSerial.print("Sucessfully read: ");
-    //RPiSerial.print(dataFile);
-    //RPiSerial.write(dataFile, numChars);
+    // I'm done
     RPiSerial.println("<>");
     fileObj.close();
   }else {
         RPiSerial.print("$$ bad file open: ");
-        //RPiSerial.write(dataFile, numChars);
         RPiSerial.println(receivedChars);
-        //RPiSerial.println(0);
   }
 }

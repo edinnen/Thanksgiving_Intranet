@@ -24,12 +24,13 @@ void SD_setup(){
     // create a new file
     newFile();
 }
-void writeReadings(){
-    // Take the various measurments and then write them to the SD card
+
+void generateDataString(char data[]){
+    // Take the various measurments and then write them to a char array
     debug_println("writeReadings");
 
-    char dataBuff[150]; // Buffer used to output the sweet sweet data TODO set length to be reasonable
-    char *data = dataBuff; // Pointer that points at the data buffer
+    //char dataBuff[150]; // Buffer used to output the sweet sweet data TODO set length to be reasonable
+    //char *data = dataBuff; // Pointer that points at the data buffer
     unsigned long time = now();
 
     readReference(); // Calibrate the ADC
@@ -47,10 +48,14 @@ void writeReadings(){
     sprintf(data, "%010lu,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n",
             time, BattV, SolarV, LoadA, BattA, battPercent, generated, used, outTemp, inTemp, boxTemp);
 
-    // Output the data to the serial port
-    debug_print(filename);
-    debug_print(": ");
-    debug_println(data);
+}
+
+void writeReadings(){
+    //char dataBuff[150]; // Buffer used to output the sweet sweet data TODO set length to be reasonable
+    //char *data = dataBuff; // Pointer that points at the data buffer
+
+    char data[150];
+    generateDataString(data);
 
     // Open the current data file, ouput the data, and close it up again
     LOG = SD.open(filename, FILE_WRITE); 
@@ -58,9 +63,14 @@ void writeReadings(){
         debug_println("Didn't print data");
         //TODO something else
     }
+
+    // Output the data to the debug serial port
+    debug_print(filename);
+    debug_print(": ");
+    debug_println(data);
 #ifdef RPI_ENABLE
-    RPiSerial.print("Live data: ");
-    RPiSerial.print(data);
+    //RPiSerial.print("Live data: ");
+    //RPiSerial.print(data);
 #endif
     LOG.flush();
     LOG.close();
@@ -89,13 +99,9 @@ void newFile(){
         "#Thanksgiving Cabin Power System\n"
         "#Time is in UNIX Time which is the number of seconds since 1970-Jan-01, "
         "filename is given in hexadecimal representation\n"
-        "#To convert the date in cell 'A8' to an excel date serial number "
-        "in Vancover time use:\n"
-        "#=(A8/86400)+25569+(-7/24)\n"
-        "#or Google it\n"
         "#Created: %04d-%02d-%02d at %02d:%02d:%02d or %010lu in UNIX time\n"
         "#Timestamp,Battery Voltage (V),Solar Voltage (V),Battery Amps (A),"
-        "Load Amps (A),Battery percentage (%), Power into Battery (w), Power to loads (w),"
+        "Load Amps (A),Battery percentage, Power into Battery (w), Power to loads (w),"
         "Outside Temp (C),Cabin Temp (C),Battery Temp (C)\n", year(t), month(t), day(t), hour(t), minute(t), second(t), unix);
     
     // Create the new filename including the system state

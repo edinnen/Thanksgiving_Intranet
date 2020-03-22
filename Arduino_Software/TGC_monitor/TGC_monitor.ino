@@ -50,10 +50,14 @@ Good things take time. Be patient.
 
 // Debug macro. If DEBUG is defined, debug functions will be replaced with
 //output to the USB serial. Otherwise they will be skipped.
-//#define DEBUG 
+#define DEBUG 
 #ifdef DEBUG
-#define debug_print(x) (Serial.print(x))
-#define debug_println(x) (Serial.println(x))
+#define debug_print(x)   \
+Serial.print("DEBUG: "); \
+Serial.print(x);
+#define debug_println(x) \
+Serial.print("DEBUG: "); \
+Serial.println(x);
 #else
 #define debug_print(x)
 #define debug_println(x)
@@ -158,9 +162,20 @@ File LOG;
 
 
 //************************** RPi Py talk stuff **********************************
+#ifdef RPI_ENABLE
+// size of the command buffer
 const byte numChars = 14;
+// command buffer
 char receivedChars[numChars];
+// Flag to indicate a full command has been parsed
 bool newData = false;
+bool STREAM_DATA_PY = false;
+
+// tracking when to send data to py when stream is requested
+elapsedMillis STREAM_DATA_ELAPSED;
+const int STREAM_DATA_INTERVAL = 5000;
+#endif
+
 
 //************************** Other **********************************
 
@@ -188,19 +203,21 @@ DeviceAddress BOX_TEMP_ADDR {0x28, 0xFF, 0x31, 0xAB, 0x31, 0x17, 0x03, 0x29};
 //************************** Begin Functions **********************************
 
 void setup() {
+#ifdef RPI_ENABLE
+    RPi_setup();
+#else
 #ifdef DEBUG
 // Set the baud rate between the arduino and computer. 115200 is nice and fast!
     Serial.begin(115200);
 #endif
-
-#ifdef RPI_ENABLE
-    RPi_setup();
 #endif
+
 
    time_setup();
    analog_setup();
    SD_setup();
    //setWrongTime();
+
    
     // Watch Dog Timer (WDT) setup
     cli(); //disable interrupts
@@ -275,8 +292,18 @@ void loadConnected(){
     // If there is serial data waiting, goto function
     //if(Serial.available()) pythonTalk(); 
 #ifdef RPI_ENABLE
+    // Parse data from RPiSerial
     if(RPiSerial.available()) readFromPy();
+    // We found a command! Rock and roll!
     if(newData == true) readCmd();
+
+    if(STREAM_DATA_PY == true){
+        if(STREAM_DATA_ELAPSED > STREAM_DATA_INTERVAL){
+            singleLiveData();
+            STREAM_DATA_ELAPSED = 0;
+        }
+    }
+
 #endif
 
     // Update the energy state every interval
@@ -285,7 +312,6 @@ void loadConnected(){
     // Write to the SD card every 'LOAD_INTERVAL'
     if(SYSTEM_TIME_ELAPSED > LOAD_INTERVAL) writeReadings();
 
-    // TODO add serial monitoring
 }
 
 void standby(){
