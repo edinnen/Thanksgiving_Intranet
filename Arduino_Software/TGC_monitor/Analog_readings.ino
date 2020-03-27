@@ -134,19 +134,43 @@ void readTemps(float temps[]){
 }
 
 void strPower(char generated[], char used[], char battPercent[]){
+
+    // if the loads are off we aren't tracking these
+    // set them all to zero
+    if(LOAD_ON_FLAG == FALSE){
+        dtostrf( 0.0, 4, 2, used);
+        dtostrf( 0.0, 4, 2, generated);
+        dtostrf(-1.0, 4, 2, battPercent);
+        ENERGY_USED = 0.0;
+        ENERGY_GENERATED = 0.0;
+        return;
+    }
+
     energyUpdate();
     BATT_ENERGY += ENERGY_GENERATED; // BATT_ENERGY is just the long term sum
-    if(BATT_ENERGY > BATT_TOTAL_CAPACITY){
+
+    // Check to see if the battery energy doesn't make sense
+    // Either it is way too low or has wrapped around and is way too big
+    if(BATT_ENERGY < BATT_TOTAL_CAPACITY/3 || BATT_ENERGY > BATT_TOTAL_CAPACITY*2){
+        BATT_ENERGY = 0;
+
+    // If it is just a bit too big then it is (hopefully) fully charged!
+    }else if(BATT_ENERGY > BATT_TOTAL_CAPACITY){
         BATT_ENERGY = BATT_TOTAL_CAPACITY;
         debug_println("Battery Full!");
     }
 
     float timeElapsed = float(SYSTEM_TIME_ELAPSED)/1000;
-    float fbattPer = float(BATT_ENERGY)/float(BATT_TOTAL_CAPACITY)*100;
+    float fbattPer = float(BATT_ENERGY)/float(BATT_TOTAL_CAPACITY)*100.0;
 
     dtostrf( (ENERGY_USED/timeElapsed)      , 4, 2, used);
     dtostrf( (ENERGY_GENERATED/timeElapsed) , 4, 2, generated);
     dtostrf( fbattPer                       , 4, 2, battPercent);
+
+    //debug_print("Battery Percentage: ");
+    //debug_print(battPercent);
+    //debug_println("\%");
+
 
     // Reset the energy variables 
     ENERGY_USED = 0.0;
@@ -180,9 +204,13 @@ void estimateBattState(){
 
     float battery_voltage[4];
     readVoltAmp(battery_voltage);
-    if(battery_voltage[0] < 13.00){
+    if(battery_voltage[0] < 11.76){
+        BATT_ENERGY = 0;
+    }else if(battery_voltage[0] < 13.00){
         BATT_ENERGY = (unsigned long)(((battery_voltage[0] - 11.75)/1.35) * float(BATT_TOTAL_CAPACITY));
     }else{
         BATT_ENERGY = BATT_TOTAL_CAPACITY; // Otherwise assume it is fully charged
     }
+    //debug_println("Estimate battery state, BATT_ENERGY");
+    //debug_println(BATT_ENERGY);
 }

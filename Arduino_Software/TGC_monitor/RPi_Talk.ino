@@ -22,6 +22,10 @@ void readCmd(){
             printFile();
             return;
         // strcmp checks to see if the strings are equal
+    }else if(strcmp(receivedChars, "0") == 0){
+            RPiSerial.print("<0>");
+            // Just saying hi!
+            return;
     }else if(strcmp(receivedChars, "2") == 0){
             RPiSerial.print("<2>");
             printRootDirectory();
@@ -45,6 +49,13 @@ void readCmd(){
     }else if(strcmp(receivedChars, "6") == 0){
             RPiSerial.print("<6>");
             // Dump settings TODO
+            return;
+    }else if(strcmp(receivedChars, "7") == 0){
+            RPiSerial.print("<7>");
+            // delete all the files on the SD card
+            // Danger!
+            deleteAllFilesOnSD();
+            newFile();
             return;
     }else{
         RPiSerial.print("$$ uC Didn't read cmd properly: ");
@@ -126,4 +137,27 @@ void printFile(){
         RPiSerial.print("$$ bad file open: ");
         RPiSerial.println(receivedChars);
   }
+}
+
+void deleteAllFilesOnSD() {
+  File dir = SD.open("/");
+
+  if( !dir ){
+      RPiSerial.println("$$ Couldn't open SD card root");
+      return;
+  }
+
+  char filename[14];
+
+  while (true) {
+    File entry =  dir.openNextFile();
+    if (! entry) break; // no more files!
+    strcpy(filename, entry.name());
+    entry.close();
+    RPiSerial.print("Removing file: ");
+    RPiSerial.println(filename);
+    SD.remove(filename);
+  }
+  // I'm done command
+  RPiSerial.println("<>");
 }

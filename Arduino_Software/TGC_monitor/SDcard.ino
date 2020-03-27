@@ -65,8 +65,7 @@ void writeReadings(){
     }
 
     // Output the data to the debug serial port
-    debug_print(filename);
-    debug_print(": ");
+    debug_println(filename);
     debug_println(data);
 #ifdef RPI_ENABLE
     //RPiSerial.print("Live data: ");

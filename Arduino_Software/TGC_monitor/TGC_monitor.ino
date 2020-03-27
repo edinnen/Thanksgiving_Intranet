@@ -143,7 +143,7 @@ float ENERGY_USED      = 0.0;
 // 10,800,000 J
 const unsigned long int BATT_TOTAL_CAPACITY =10800000;
 // The approximate battery energy
-unsigned long int BATT_ENERGY = BATT_TOTAL_CAPACITY;
+unsigned long int BATT_ENERGY = 0;
 
 // Flags for indicating if the load is connected and if the state changed
 // Must both be the same value (true or false) otherwise opens a file twice (TODO)
