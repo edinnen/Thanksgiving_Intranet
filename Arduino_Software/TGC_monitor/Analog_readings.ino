@@ -105,14 +105,15 @@ void readVoltAmp(float Power[]){
 }
 
 void readSolarVoltage(float* volts){
+    readReference(); // Calibrate against reference
     analogRead(SOLAR_VOLATGE_PIN); // Prep the ADC
     delay(1);
 
     // Take the reading and convert to correct voltage
    *volts = VOLT_CALIBRATION / 1024.0 * (float)analogRead(SOLAR_VOLATGE_PIN)*SOLAR_VOLT_MULTI;
-   //*volts = 13.6;
    return;
 }
+
 
 void strTemps(char outTemp[], char inTemp[], char boxTemp[]){
     float temps[3];
@@ -124,6 +125,10 @@ void strTemps(char outTemp[], char inTemp[], char boxTemp[]){
     return;
 }
 
+
+// Read temperatures from digital temperature sensors on a oneWire bus
+// If they are not present or can't be contacted it will output -127
+// I just don't even look at the errors. Who cares?
 void readTemps(float temps[]){
     
     sensors.requestTemperatures(); // Tell all sensors to begin a conversion
@@ -132,6 +137,7 @@ void readTemps(float temps[]){
     temps[2] = sensors.getTempC(BOX_TEMP_ADDR);
     return;
 }
+
 
 void strPower(char generated[], char used[], char battPercent[]){
 
@@ -157,7 +163,7 @@ void strPower(char generated[], char used[], char battPercent[]){
     // If it is just a bit too big then it is (hopefully) fully charged!
     }else if(BATT_ENERGY > BATT_TOTAL_CAPACITY){
         BATT_ENERGY = BATT_TOTAL_CAPACITY;
-        debug_println("Battery Full!");
+        //debug_println("Battery Full!");
     }
 
     float timeElapsed = float(SYSTEM_TIME_ELAPSED)/1000;
@@ -167,33 +173,30 @@ void strPower(char generated[], char used[], char battPercent[]){
     dtostrf( (ENERGY_GENERATED/timeElapsed) , 4, 2, generated);
     dtostrf( fbattPer                       , 4, 2, battPercent);
 
-    //debug_print("Battery Percentage: ");
-    //debug_print(battPercent);
-    //debug_println("\%");
-
-
     // Reset the energy variables 
     ENERGY_USED = 0.0;
     ENERGY_GENERATED = 0.0;
 }
 
+
+// Track the power and time elapsed to determine the average power usage 
+// between SD writes
 void energyUpdate(){
-    // Update the current energy level of the battery by performing power tracking
-    // Energy level in this context means the amount of energy that has been used from the 
-    // full battery. i.e. ENERGY_LEVEL == 0 means the battery is full. The value will always
-    // be ENERGY_LEVEL <= 0 since once the battery is full it will stop charging.
-    // Energy level is kept in kilojoules (kJ)
+    // TODO it would be nice to track energy differently.
+    // Tracking just power and then before we convert it to a string 
+    // we divide by time. Less rounding errors
 
     float Powers[4];
     // battV, battA, LoadV, LoadA
     readVoltAmp(Powers);
-    // Energy used is just the power to the loads times time
+    // Energy used is just the power to the loads over time
     ENERGY_USED += Powers[2]*Powers[3]*float(ENERGY_TIME_ELAPSED)/1000.0;
     // Energy generated is the power going into the battery plus the power used times time
     ENERGY_GENERATED += Powers[0]*((-1.0)*Powers[1]+Powers[3])*float(ENERGY_TIME_ELAPSED)/1000.0;
     ENERGY_TIME_ELAPSED = 0; // Reset the timer between readings
 
 }// energyUpdate()
+
 
 // If the current battery voltage is less than 13volts then the starting level
 // is less than 0kJ. The following is an approximation of energy level based only

@@ -1,8 +1,0 @@
-#Thanksgiving Cabin Power System
-#Time is in UNIX Time which is the number of seconds since 1970-Jan-01, filename is given in hexadecimal representation
-#To convert the date in cell 'A8' to an excel date serial number in Vancover time use:
-#=(A8/86400)+25569+(-7/24)
-#or Google it
-#Created: 2020-03-22 at 03:49:31 or 1584848971 in UNIX time
-#Timestamp,Battery Voltage (V),Solar Voltage (V),Battery Amps (A),Load Amps (A),Battery percentage (1584848971,1.01,30.45,0.00,0.00,100.00,0.00,0.00,-127.00,-127.00,23.69
-1584848977,1.01,30.46,0.00,0.00,100.00,0.00,0.00,-127.00,-127.00,23.75

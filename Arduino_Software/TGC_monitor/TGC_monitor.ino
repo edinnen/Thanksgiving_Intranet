@@ -3,14 +3,14 @@ Thanksgiving Cabin Power System Monitor
 
 A magical device that monitors important data produced at the Thanksgiving cabin
 This software goes along with an Arduino based datalogging system which can
-track power and temperature data to an SD card. 
+track power and temMperature data to an SD card. 
 
 Developed by Stuart de Haas along with help from many great people. Specific 
 thanks to Stuart Taylor. Hey Stuart!
 
 Created: October, 2017
 First kinda working version: 22 July, 2018
-Last Modified: 11 March, 2020
+Last Modified: 27 March, 2020
 
 Good things take time. Be patient.
 */
@@ -33,24 +33,24 @@ Good things take time. Be patient.
 #include <INA219.h> // used to deal with power measurment ICs
 
 // what's the name of the hardware serial ports?
-#define GPSSerial Serial2 // The serial port used for the GPS communication
-#define RPiSerial Serial // Serial port wired to the RPi (if present)
-//#define debug     Serial  // Serial port for communicating over USB
-
+#define GPSSerial Serial2 
+#define RPiSerial Serial   
 
 // set to 1 for faster write/read frequencies and clock updates.
 // set to 0 for production numbers
 #define DEBUG_SPEEDUP_TIME 1
 
-// Define for test temperature sensor
-// comment out for actual temperature sensor
-#define DEBUG_TEMPERATURE 1
+// Comment out to use actual temperature sensors
+//#define DEBUG_TEMPERATURE
 
+// Comment out line to disable RPi Serial communication
 #define RPI_ENABLE 
 
 // Debug macro. If DEBUG is defined, debug functions will be replaced with
 //output to the USB serial. Otherwise they will be skipped.
+
 #define DEBUG 
+
 #ifdef DEBUG
 #define debug_print(x)   \
 Serial.print("DEBUG: "); \
@@ -58,11 +58,15 @@ Serial.print(x);
 #define debug_println(x) \
 Serial.print("DEBUG: "); \
 Serial.println(x);
+#define humanTime()      \
+printhumanTime();
 #else
 #define debug_print(x)
 #define debug_println(x)
+#define humanTime()
 #endif
 
+// TODO not needed
 #define FALSE 0
 #define TRUE  1
 
@@ -75,14 +79,17 @@ RTC_PCF8523 rtc;
 
 // UNIX time of last GPS fix. Used to determine if we need a new fix
 unsigned long LAST_GPS_FIX = 0;
+unsigned long LAST_GPS_ATTEMPT = 0;
+unsigned long GPS_WOKE_UP_TIME = 0;
 //Track if the gps is asleep
 bool GPS_SLEEP_FLAG = 1;
 // GPS has an enable pin which puts it to sleep. Put low to disable
 byte GPS_EN_PIN = 36;
 // Both sync intervals are in seconds. Interval depends if we are debugging or not
-const unsigned int GPS_SYNC_INTERVAL = DEBUG_SPEEDUP_TIME ? 60 : 60*60; // How frequenty to update time with GPS
-const unsigned int RTC_SYNC_INTERVAL = DEBUG_SPEEDUP_TIME ? 10 : 5*60; // How frequently to update time with RTC
-//const unsigned int RTC_SYNC_INTERVAL = 30; // How frequently to update time with RTC
+const unsigned int GPS_SYNC_INTERVAL = DEBUG_SPEEDUP_TIME ? 60*5 : 3600*24*5; // How frequenty to update time with GPS
+const unsigned int RTC_SYNC_INTERVAL = DEBUG_SPEEDUP_TIME ? 10 : 60; // How frequently to update time with RTC
+// max time to leave the GPS awake trying to get a signal. We need to giveup eventually!
+const unsigned int GPS_MAX_AWAKE_TIME = DEBUG_SPEEDUP_TIME ? 120 : 3600; 
 
 // elapsedMillis creates a background timer that constantly counts up. Much better to use these
 // timers than to use a delay. Does not work while asleep so make sure to reset after sleeping
@@ -98,7 +105,10 @@ elapsedMillis ENERGY_TIME_ELAPSED;
 int NUM_NAPS_TAKEN = 0; // Number of naps taken during standby mode (loads disconnected). One 'nap' is ~8sec long
 // use 37 naps for about 5min between SD writes, or 150 naps for ~20min. Note: not very accurate 
 const int NUM_NAPS_BETWEEN_SD_WRITES = DEBUG_SPEEDUP_TIME ? 2 : (20*60)/8; 
+// This interval is used when loads are connected. It is generally higher resolution
 const int LOAD_INTERVAL = DEBUG_SPEEDUP_TIME ? 5*1000 : 10*1000; //milliseconds
+// Number of seconds between readings used to track power and energy usage
+const int ENERGY_TIME_INTERVAL = 1000;
 
 //************************** Analog Stuff **********************************
 
@@ -120,7 +130,6 @@ const float SOLAR_VOLT_MULTI = 7.3357;
 // Information used to configure the INA219 power measurment ICs
 // At the time of writing, both ICs will use an equivalent shunt with a resistance of 0.001 Ohms. The only difference is the max current rating but I'm pretty sure there is no actual difference.
 // Additional configuration is done in the setup function
-// Details of the Battery measurment shunt 
 #define BATT_SHUNT_MAX_V  0.1
 #define BATT_BUS_MAX_V    16
 #define BATT_MAX_CURRENT  100
@@ -151,9 +160,7 @@ bool LOAD_ON_FLAG = TRUE;
 bool PREV_LOAD_STATE = TRUE;
 //************************** SD Card Stuff **********************************
 
-// chip select pin is 53 
 const byte chipSelect = 10;
-//const byte SDmasterSelect = 48;
 // Global variable containing the current filename
 // I had to 'malloc' it to keep it from disapearing. Stupid shit
 char *filename = (char *) malloc(15);
@@ -256,13 +263,14 @@ void SYSTEM_HAULT(){
     }
 }
 
-void sleep(){  
-    debug_println("Starting my nap");
-    delay(10);
+
     // This function puts the arduino in a deep sleep to save power. 
     // Each nap takes about 8 seconds but don't rely on this being accurate.
-
-    //sei(); //enable interupts so we can wakeup
+void sleep(){  
+#ifdef DEBUG 
+    debug_println("Starting my nap");
+    delay(10); // need this delay because we power down right away
+#endif
 
     // Setting the 'Sleep Mode Control Register' or SMCR
     // SMCR = ----010- is Power-Down mode
@@ -280,17 +288,18 @@ void sleep(){
     sleep_disable(); // First thing to do is disable sleep.
     // Re-enable the peripherals.
     power_all_enable();
-    //cli(); // disable interupts
+
+#ifdef DEBUG
+    // need to let it warm up before writing 
     delay(10);
     debug_println("Finished my nap");
+#endif
 
     NUM_NAPS_TAKEN++; // We took a nap so update the counter
 } // sleep()
 
 void loadConnected(){
 
-    // If there is serial data waiting, goto function
-    //if(Serial.available()) pythonTalk(); 
 #ifdef RPI_ENABLE
     // Parse data from RPiSerial
     if(RPiSerial.available()) readFromPy();
@@ -307,7 +316,7 @@ void loadConnected(){
 #endif
 
     // Update the energy state every interval
-    if(ENERGY_TIME_ELAPSED > 1000) energyUpdate();
+    if(ENERGY_TIME_ELAPSED > ENERGY_TIME_INTERVAL) energyUpdate();
 
     // Write to the SD card every 'LOAD_INTERVAL'
     if(SYSTEM_TIME_ELAPSED > LOAD_INTERVAL) writeReadings();
@@ -328,18 +337,6 @@ void standby(){
     }
 }//standby
 
-void test(){
-
-    writeReadings(); // Write readings to SD card
-    for(int i = 0;i<5;i++){
-        //testVoltage();
-        humanTime(); // Print the human readable time
-        // Output if the GPS is sleeping or not.
-        //GPS_SLEEP_FLAG ? debug_println("GPS is asleep") : debug_println("GPS is awake and workin'");
-        delay(1000);
-    }
-
-}
 
 void areLoadsConnected(){
     // Check to see if the loads are connected. Low means they are connected.
@@ -355,7 +352,7 @@ void loop() {
             debug_println("Loads were just attached...");
             setGPStime(); // good time to sync RTC with GPS
             estimateBattState();
-            newFile(); // Create a new file
+            newFile(); 
             ENERGY_TIME_ELAPSED = 0; // Reset the clock used for energy measurments
             SYSTEM_TIME_ELAPSED = 0;
             PREV_LOAD_STATE = TRUE; // Reset the previous state flag
@@ -365,7 +362,6 @@ void loop() {
     }else{ // if the load is not connected, system is in standby
         if(PREV_LOAD_STATE == TRUE){ // If the loads were just disconnected
             debug_println("Loads just disconnected");
-            //TODO
             newFile(); // Create a new file
     // Set battery ENERGY_LEVEL to a undefined value to indicate it is not being tracked anymore
             BATT_ENERGY = 1; 

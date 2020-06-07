@@ -100,12 +100,12 @@ if expand('%') == '' && !&modified && line('$') <= 1 && getline(1) == ''
 endif
 set shortmess=aoO
 badd +41 TGC_monitor.ino
-badd +176 Analog_readings.ino
+badd +193 Analog_readings.ino
 badd +87 ~/Documents/Arduino/Thanksgiving_Intranet/Arduino_RPi/RPi_Arduino.py
 badd +5 ~/Documents/Arduino/Thanksgiving_Intranet/Arduino_RPi/uCTalk.py
-badd +38 RPi_Talk.ino
+badd +72 RPi_Talk.ino
 badd +78 SDcard.ino
-badd +67 Time.ino
+badd +63 Time.ino
 argglobal
 silent! argdel *
 edit Time.ino
@@ -117,7 +117,10 @@ vsplit
 2wincmd h
 wincmd _ | wincmd |
 split
-1wincmd k
+wincmd _ | wincmd |
+split
+2wincmd k
+wincmd w
 wincmd w
 wincmd w
 wincmd _ | wincmd |
@@ -136,20 +139,22 @@ set nosplitbelow
 set nosplitright
 wincmd t
 set winminheight=1 winheight=1 winminwidth=1 winwidth=1
-exe '1resize ' . ((&lines * 30 + 31) / 63)
+exe '1resize ' . ((&lines * 44 + 31) / 63)
 exe 'vert 1resize ' . ((&columns * 79 + 118) / 237)
-exe '2resize ' . ((&lines * 30 + 31) / 63)
+exe '2resize ' . ((&lines * 1 + 31) / 63)
 exe 'vert 2resize ' . ((&columns * 79 + 118) / 237)
-exe '3resize ' . ((&lines * 20 + 31) / 63)
-exe 'vert 3resize ' . ((&columns * 78 + 118) / 237)
-exe '4resize ' . ((&lines * 20 + 31) / 63)
+exe '3resize ' . ((&lines * 14 + 31) / 63)
+exe 'vert 3resize ' . ((&columns * 79 + 118) / 237)
+exe '4resize ' . ((&lines * 21 + 31) / 63)
 exe 'vert 4resize ' . ((&columns * 78 + 118) / 237)
-exe '5resize ' . ((&lines * 19 + 31) / 63)
+exe '5resize ' . ((&lines * 1 + 31) / 63)
 exe 'vert 5resize ' . ((&columns * 78 + 118) / 237)
-exe '6resize ' . ((&lines * 30 + 31) / 63)
+exe '6resize ' . ((&lines * 37 + 31) / 63)
 exe 'vert 6resize ' . ((&columns * 78 + 118) / 237)
 exe '7resize ' . ((&lines * 30 + 31) / 63)
 exe 'vert 7resize ' . ((&columns * 78 + 118) / 237)
+exe '8resize ' . ((&lines * 30 + 31) / 63)
+exe 'vert 8resize ' . ((&columns * 78 + 118) / 237)
 argglobal
 setlocal keymap=
 setlocal noarabic
@@ -265,135 +270,12 @@ setlocal nowinfixwidth
 setlocal wrap
 setlocal wrapmargin=0
 silent! normal! zE
-let s:l = 67 - ((13 * winheight(0) + 15) / 30)
+let s:l = 152 - ((30 * winheight(0) + 22) / 44)
 if s:l < 1 | let s:l = 1 | endif
 exe s:l
 normal! zt
-67
-normal! 05|
-wincmd w
-argglobal
-if bufexists('RPi_Talk.ino') | buffer RPi_Talk.ino | else | edit RPi_Talk.ino | endif
-setlocal keymap=
-setlocal noarabic
-setlocal autoindent
-setlocal backupcopy=
-setlocal balloonexpr=
-setlocal nobinary
-setlocal nobreakindent
-setlocal breakindentopt=
-setlocal bufhidden=
-setlocal buflisted
-setlocal buftype=
-setlocal nocindent
-setlocal cinkeys=0{,0},0),:,0#,!^F,o,O,e
-setlocal cinoptions=
-setlocal cinwords=if,else,while,do,for,switch
-setlocal colorcolumn=
-setlocal comments=s1:/*,mb:*,ex:*/,://,b:#,:%,:XCOMM,n:>,fb:-
-setlocal commentstring=/*%s*/
-setlocal complete=.,w,b,u,t,i
-setlocal concealcursor=
-setlocal conceallevel=0
-setlocal completefunc=
-setlocal nocopyindent
-setlocal cryptmethod=
-setlocal nocursorbind
-setlocal nocursorcolumn
-setlocal nocursorline
-setlocal define=
-setlocal dictionary=
-setlocal nodiff
-setlocal equalprg=
-setlocal errorformat=
-setlocal expandtab
-if &filetype != 'arduino'
-setlocal filetype=arduino
-endif
-setlocal fixendofline
-setlocal foldcolumn=0
-setlocal foldenable
-setlocal foldexpr=0
-setlocal foldignore=#
-setlocal foldlevel=0
-setlocal foldmarker={{{,}}}
-setlocal foldmethod=manual
-setlocal foldminlines=1
-setlocal foldnestmax=20
-setlocal foldtext=foldtext()
-setlocal formatexpr=
-setlocal formatoptions=tcq
-setlocal formatlistpat=^\\s*\\d\\+[\\]:.)}\\t\ ]\\s*
-setlocal formatprg=
-setlocal grepprg=
-setlocal iminsert=0
-setlocal imsearch=-1
-setlocal include=
-setlocal includeexpr=
-setlocal indentexpr=
-setlocal indentkeys=0{,0},:,0#,!^F,o,O,e
-setlocal noinfercase
-setlocal iskeyword=@,48-57,_,192-255
-setlocal keywordprg=
-setlocal nolinebreak
-setlocal nolisp
-setlocal lispwords=
-setlocal nolist
-setlocal makeencoding=
-setlocal makeprg=
-setlocal matchpairs=(:),{:},[:]
-setlocal modeline
-setlocal modifiable
-setlocal nrformats=bin,octal,hex
-set number
-setlocal number
-setlocal numberwidth=4
-setlocal omnifunc=syntaxcomplete#Complete
-setlocal path=
-setlocal nopreserveindent
-setlocal nopreviewwindow
-setlocal quoteescape=\\
-setlocal noreadonly
-setlocal norelativenumber
-setlocal norightleft
-setlocal rightleftcmd=search
-setlocal noscrollbind
-setlocal shiftwidth=4
-setlocal noshortname
-setlocal signcolumn=auto
-setlocal smartindent
-setlocal softtabstop=4
-setlocal nospell
-setlocal spellcapcheck=[.?!]\\_[\\])'\"\	\ ]\\+
-setlocal spellfile=
-setlocal spelllang=en
-setlocal statusline=
-setlocal suffixesadd=
-setlocal swapfile
-setlocal synmaxcol=3000
-if &syntax != 'arduino'
-setlocal syntax=arduino
-endif
-setlocal tabstop=4
-setlocal tagcase=
-setlocal tags=
-setlocal termkey=
-setlocal termsize=
-setlocal textwidth=0
-setlocal thesaurus=
-setlocal noundofile
-setlocal undolevels=-123456
-setlocal nowinfixheight
-setlocal nowinfixwidth
-setlocal wrap
-setlocal wrapmargin=0
-silent! normal! zE
-let s:l = 38 - ((14 * winheight(0) + 15) / 30)
-if s:l < 1 | let s:l = 1 | endif
-exe s:l
-normal! zt
-38
-normal! 023|
+152
+normal! 029|
 wincmd w
 argglobal
 if bufexists('Analog_readings.ino') | buffer Analog_readings.ino | else | edit Analog_readings.ino | endif
@@ -511,12 +393,135 @@ setlocal nowinfixwidth
 setlocal wrap
 setlocal wrapmargin=0
 silent! normal! zE
-let s:l = 193 - ((9 * winheight(0) + 10) / 20)
+let s:l = 180 - ((1 * winheight(0) + 0) / 1)
 if s:l < 1 | let s:l = 1 | endif
 exe s:l
 normal! zt
-193
-normal! 096|
+180
+normal! 0
+wincmd w
+argglobal
+if bufexists('RPi_Talk.ino') | buffer RPi_Talk.ino | else | edit RPi_Talk.ino | endif
+setlocal keymap=
+setlocal noarabic
+setlocal autoindent
+setlocal backupcopy=
+setlocal balloonexpr=
+setlocal nobinary
+setlocal nobreakindent
+setlocal breakindentopt=
+setlocal bufhidden=
+setlocal buflisted
+setlocal buftype=
+setlocal nocindent
+setlocal cinkeys=0{,0},0),:,0#,!^F,o,O,e
+setlocal cinoptions=
+setlocal cinwords=if,else,while,do,for,switch
+setlocal colorcolumn=
+setlocal comments=s1:/*,mb:*,ex:*/,://,b:#,:%,:XCOMM,n:>,fb:-
+setlocal commentstring=/*%s*/
+setlocal complete=.,w,b,u,t,i
+setlocal concealcursor=
+setlocal conceallevel=0
+setlocal completefunc=
+setlocal nocopyindent
+setlocal cryptmethod=
+setlocal nocursorbind
+setlocal nocursorcolumn
+setlocal nocursorline
+setlocal define=
+setlocal dictionary=
+setlocal nodiff
+setlocal equalprg=
+setlocal errorformat=
+setlocal expandtab
+if &filetype != 'arduino'
+setlocal filetype=arduino
+endif
+setlocal fixendofline
+setlocal foldcolumn=0
+setlocal foldenable
+setlocal foldexpr=0
+setlocal foldignore=#
+setlocal foldlevel=0
+setlocal foldmarker={{{,}}}
+setlocal foldmethod=manual
+setlocal foldminlines=1
+setlocal foldnestmax=20
+setlocal foldtext=foldtext()
+setlocal formatexpr=
+setlocal formatoptions=tcq
+setlocal formatlistpat=^\\s*\\d\\+[\\]:.)}\\t\ ]\\s*
+setlocal formatprg=
+setlocal grepprg=
+setlocal iminsert=0
+setlocal imsearch=-1
+setlocal include=
+setlocal includeexpr=
+setlocal indentexpr=
+setlocal indentkeys=0{,0},:,0#,!^F,o,O,e
+setlocal noinfercase
+setlocal iskeyword=@,48-57,_,192-255
+setlocal keywordprg=
+setlocal nolinebreak
+setlocal nolisp
+setlocal lispwords=
+setlocal nolist
+setlocal makeencoding=
+setlocal makeprg=
+setlocal matchpairs=(:),{:},[:]
+setlocal modeline
+setlocal modifiable
+setlocal nrformats=bin,octal,hex
+set number
+setlocal number
+setlocal numberwidth=4
+setlocal omnifunc=syntaxcomplete#Complete
+setlocal path=
+setlocal nopreserveindent
+setlocal nopreviewwindow
+setlocal quoteescape=\\
+setlocal noreadonly
+setlocal norelativenumber
+setlocal norightleft
+setlocal rightleftcmd=search
+setlocal noscrollbind
+setlocal shiftwidth=4
+setlocal noshortname
+setlocal signcolumn=auto
+setlocal smartindent
+setlocal softtabstop=4
+setlocal nospell
+setlocal spellcapcheck=[.?!]\\_[\\])'\"\	\ ]\\+
+setlocal spellfile=
+setlocal spelllang=en
+setlocal statusline=
+setlocal suffixesadd=
+setlocal swapfile
+setlocal synmaxcol=3000
+if &syntax != 'arduino'
+setlocal syntax=arduino
+endif
+setlocal tabstop=4
+setlocal tagcase=
+setlocal tags=
+setlocal termkey=
+setlocal termsize=
+setlocal textwidth=0
+setlocal thesaurus=
+setlocal noundofile
+setlocal undolevels=-123456
+setlocal nowinfixheight
+setlocal nowinfixwidth
+setlocal wrap
+setlocal wrapmargin=0
+silent! normal! zE
+let s:l = 143 - ((9 * winheight(0) + 7) / 14)
+if s:l < 1 | let s:l = 1 | endif
+exe s:l
+normal! zt
+143
+normal! 034|
 wincmd w
 argglobal
 if bufexists('SDcard.ino') | buffer SDcard.ino | else | edit SDcard.ino | endif
@@ -634,12 +639,12 @@ setlocal nowinfixwidth
 setlocal wrap
 setlocal wrapmargin=0
 silent! normal! zE
-let s:l = 78 - ((9 * winheight(0) + 10) / 20)
+let s:l = 68 - ((19 * winheight(0) + 10) / 21)
 if s:l < 1 | let s:l = 1 | endif
 exe s:l
 normal! zt
-78
-normal! 05|
+68
+normal! 09|
 wincmd w
 argglobal
 if bufexists('TGC_monitor.ino') | buffer TGC_monitor.ino | else | edit TGC_monitor.ino | endif
@@ -757,12 +762,135 @@ setlocal nowinfixwidth
 setlocal wrap
 setlocal wrapmargin=0
 silent! normal! zE
-let s:l = 41 - ((6 * winheight(0) + 9) / 19)
+let s:l = 127 - ((0 * winheight(0) + 0) / 1)
 if s:l < 1 | let s:l = 1 | endif
 exe s:l
 normal! zt
-41
-normal! 028|
+127
+normal! 032|
+wincmd w
+argglobal
+if bufexists('TGC_monitor.ino') | buffer TGC_monitor.ino | else | edit TGC_monitor.ino | endif
+setlocal keymap=
+setlocal noarabic
+setlocal autoindent
+setlocal backupcopy=
+setlocal balloonexpr=
+setlocal nobinary
+setlocal nobreakindent
+setlocal breakindentopt=
+setlocal bufhidden=
+setlocal buflisted
+setlocal buftype=
+setlocal nocindent
+setlocal cinkeys=0{,0},0),:,0#,!^F,o,O,e
+setlocal cinoptions=
+setlocal cinwords=if,else,while,do,for,switch
+setlocal colorcolumn=
+setlocal comments=s1:/*,mb:*,ex:*/,://,b:#,:%,:XCOMM,n:>,fb:-
+setlocal commentstring=/*%s*/
+setlocal complete=.,w,b,u,t,i
+setlocal concealcursor=
+setlocal conceallevel=0
+setlocal completefunc=
+setlocal nocopyindent
+setlocal cryptmethod=
+setlocal nocursorbind
+setlocal nocursorcolumn
+setlocal nocursorline
+setlocal define=
+setlocal dictionary=
+setlocal nodiff
+setlocal equalprg=
+setlocal errorformat=
+setlocal expandtab
+if &filetype != 'arduino'
+setlocal filetype=arduino
+endif
+setlocal fixendofline
+setlocal foldcolumn=0
+setlocal foldenable
+setlocal foldexpr=0
+setlocal foldignore=#
+setlocal foldlevel=0
+setlocal foldmarker={{{,}}}
+setlocal foldmethod=manual
+setlocal foldminlines=1
+setlocal foldnestmax=20
+setlocal foldtext=foldtext()
+setlocal formatexpr=
+setlocal formatoptions=tcq
+setlocal formatlistpat=^\\s*\\d\\+[\\]:.)}\\t\ ]\\s*
+setlocal formatprg=
+setlocal grepprg=
+setlocal iminsert=0
+setlocal imsearch=-1
+setlocal include=
+setlocal includeexpr=
+setlocal indentexpr=
+setlocal indentkeys=0{,0},:,0#,!^F,o,O,e
+setlocal noinfercase
+setlocal iskeyword=@,48-57,_,192-255
+setlocal keywordprg=
+setlocal nolinebreak
+setlocal nolisp
+setlocal lispwords=
+setlocal nolist
+setlocal makeencoding=
+setlocal makeprg=
+setlocal matchpairs=(:),{:},[:]
+setlocal modeline
+setlocal modifiable
+setlocal nrformats=bin,octal,hex
+set number
+setlocal number
+setlocal numberwidth=4
+setlocal omnifunc=syntaxcomplete#Complete
+setlocal path=
+setlocal nopreserveindent
+setlocal nopreviewwindow
+setlocal quoteescape=\\
+setlocal noreadonly
+setlocal norelativenumber
+setlocal norightleft
+setlocal rightleftcmd=search
+setlocal noscrollbind
+setlocal shiftwidth=4
+setlocal noshortname
+setlocal signcolumn=auto
+setlocal smartindent
+setlocal softtabstop=4
+setlocal nospell
+setlocal spellcapcheck=[.?!]\\_[\\])'\"\	\ ]\\+
+setlocal spellfile=
+setlocal spelllang=en
+setlocal statusline=
+setlocal suffixesadd=
+setlocal swapfile
+setlocal synmaxcol=3000
+if &syntax != 'arduino'
+setlocal syntax=arduino
+endif
+setlocal tabstop=4
+setlocal tagcase=
+setlocal tags=
+setlocal termkey=
+setlocal termsize=
+setlocal textwidth=0
+setlocal thesaurus=
+setlocal noundofile
+setlocal undolevels=-123456
+setlocal nowinfixheight
+setlocal nowinfixwidth
+setlocal wrap
+setlocal wrapmargin=0
+silent! normal! zE
+let s:l = 49 - ((14 * winheight(0) + 18) / 37)
+if s:l < 1 | let s:l = 1 | endif
+exe s:l
+normal! zt
+49
+normal! 019|
 wincmd w
 argglobal
 if bufexists('~/Documents/Arduino/Thanksgiving_Intranet/Arduino_RPi/uCTalk.py') | buffer ~/Documents/Arduino/Thanksgiving_Intranet/Arduino_RPi/uCTalk.py | else | edit ~/Documents/Arduino/Thanksgiving_Intranet/Arduino_RPi/uCTalk.py | endif
@@ -880,12 +1008,12 @@ setlocal nowinfixwidth
 setlocal wrap
 setlocal wrapmargin=0
 silent! normal! zE
-let s:l = 5 - ((4 * winheight(0) + 15) / 30)
+let s:l = 27 - ((26 * winheight(0) + 15) / 30)
 if s:l < 1 | let s:l = 1 | endif
 exe s:l
 normal! zt
-5
-normal! 0
+27
+normal! 012|
 wincmd w
 argglobal
 if bufexists('~/Documents/Arduino/Thanksgiving_Intranet/Arduino_RPi/RPi_Arduino.py') | buffer ~/Documents/Arduino/Thanksgiving_Intranet/Arduino_RPi/RPi_Arduino.py | else | edit ~/Documents/Arduino/Thanksgiving_Intranet/Arduino_RPi/RPi_Arduino.py | endif
@@ -1003,27 +1131,30 @@ setlocal nowinfixwidth
 setlocal wrap
 setlocal wrapmargin=0
 silent! normal! zE
-let s:l = 108 - ((18 * winheight(0) + 15) / 30)
+let s:l = 30 - ((29 * winheight(0) + 15) / 30)
 if s:l < 1 | let s:l = 1 | endif
 exe s:l
 normal! zt
-108
-normal! 0
+30
+normal! 016|
 wincmd w
-exe '1resize ' . ((&lines * 30 + 31) / 63)
+6wincmd w
+exe '1resize ' . ((&lines * 44 + 31) / 63)
 exe 'vert 1resize ' . ((&columns * 79 + 118) / 237)
-exe '2resize ' . ((&lines * 30 + 31) / 63)
+exe '2resize ' . ((&lines * 1 + 31) / 63)
 exe 'vert 2resize ' . ((&columns * 79 + 118) / 237)
-exe '3resize ' . ((&lines * 20 + 31) / 63)
-exe 'vert 3resize ' . ((&columns * 78 + 118) / 237)
-exe '4resize ' . ((&lines * 20 + 31) / 63)
+exe '3resize ' . ((&lines * 14 + 31) / 63)
+exe 'vert 3resize ' . ((&columns * 79 + 118) / 237)
+exe '4resize ' . ((&lines * 21 + 31) / 63)
 exe 'vert 4resize ' . ((&columns * 78 + 118) / 237)
-exe '5resize ' . ((&lines * 19 + 31) / 63)
+exe '5resize ' . ((&lines * 1 + 31) / 63)
 exe 'vert 5resize ' . ((&columns * 78 + 118) / 237)
-exe '6resize ' . ((&lines * 30 + 31) / 63)
+exe '6resize ' . ((&lines * 37 + 31) / 63)
 exe 'vert 6resize ' . ((&columns * 78 + 118) / 237)
 exe '7resize ' . ((&lines * 30 + 31) / 63)
 exe 'vert 7resize ' . ((&columns * 78 + 118) / 237)
+exe '8resize ' . ((&lines * 30 + 31) / 63)
+exe 'vert 8resize ' . ((&columns * 78 + 118) / 237)
 tabnext 1
 if exists('s:wipebuf')
   silent exe 'bwipe ' . s:wipebuf
