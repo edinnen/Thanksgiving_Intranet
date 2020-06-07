@@ -26,7 +26,7 @@ void time_setup(){
     GPSSerial.begin(9600);
     delay(50);
     // Warm restart the GPS
-    //GPSSerial.println("$PMTK101*32"); //TODO required?
+    GPSSerial.println("$PMTK101*32"); //TODO required?
     // Only output the RMC data
     GPSSerial.println("$PMTK314,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0*29");
 
@@ -68,7 +68,7 @@ time_t setRTCtime(){
     humanTime();
 
     // Check to see if we need to sync with the GPS
-    if(dtime.unixtime() > (LAST_GPS_FIX + GPS_SYNC_INTERVAL) ){
+    if(dtime.unixtime() > (LAST_GPS_ATTEMPT + GPS_SYNC_INTERVAL) ){
         // Should set the RTC time with the GPS
         if(!setGPStime()){
             dtime = rtc.now(); // Fetch the updated time on the RTC
@@ -76,7 +76,7 @@ time_t setRTCtime(){
             debug_println("Couldn't get GPS time");
         }
     }
-    setTime(dtime.unixtime());
+    setTime(dtime.unixtime()); // sets system clock from RTC
     return dtime.unixtime();
 }
 
@@ -91,9 +91,10 @@ byte setGPStime(){
     // This function talks to the GPS and tries to parse out the time.
     // She then updates the RTC time
     int year;
-    // TODO should do this with a time object of some sort
     byte month, day, hour, minute, second;
     unsigned long fix_age = 501; // Start with an unacceptable age
+
+    DateTime now = rtc.now(); 
 
     if(GPS_SLEEP_FLAG == 1){
         // If the GPS was asleep, wake it up
@@ -101,11 +102,11 @@ byte setGPStime(){
         delay(100);
         //GPSSerial.println("$PMTK101*32"); // Wake up the GPS 'Hot Start'
         GPS_SLEEP_FLAG = 0;
+        // set the time the GPS woke up. Used to decide when to give up
+        GPS_WOKE_UP_TIME = now.unixtime(); 
         //delay(100);
     }
     debug_println("Checking the GPS time...");
-    //for(unsigned long start = millis(); millis() - start < 1000;){ //Try for one second
-    //if(!GPSSerial.available()) return 1; // If nothing available, peace out
 
     // flush the buffer. This discards old data
     while( GPSSerial.available()){
@@ -121,9 +122,8 @@ byte setGPStime(){
 
    // Either we timed out or we got some data! Lets check
    gps.crack_datetime(&year, &month, &day, &hour, &minute, &second, NULL, &fix_age);
-   if(fix_age < 1000){ // Make sure the time is accurate 
+   if(fix_age < 1100){ // Make sure the fix is recent
         debug_println("encoded");
-        //gps.crack_datetime(&year, &month, &day, &hour, &minute, &second, NULL, &fix_age);
         hour -= 7; //Adjust for timezone to Vancouver time
         debug_println(fix_age);
         //GPSSerial.println("$PMTK161,0*28"); // Enter standby mode
@@ -131,11 +131,11 @@ byte setGPStime(){
         digitalWrite(GPS_EN_PIN, LOW); // Good job GPS! Sleep now
         GPS_SLEEP_FLAG = 1;
         // Set RTC to the time provided by the GPS
-        DateTime now = rtc.now(); // Old time
         unsigned long old_unix = now.unixtime();
         rtc.adjust(DateTime(year, month, day, hour, minute, second)); // Set to new time
         now = rtc.now(); // update DateTime with new time
         LAST_GPS_FIX = now.unixtime();
+        LAST_GPS_ATTEMPT = LAST_GPS_FIX;
 
        // Check to see if the time has changed substantially. 
        // Both numbers are unsigned so we need to see which one is larger so 
@@ -149,17 +149,22 @@ byte setGPStime(){
        debug_println(now.unixtime());
        humanTime();
        return 0;  // Return sucess!
+   }else if(now.unixtime() > GPS_WOKE_UP_TIME + GPS_MAX_AWAKE_TIME ){
+        digitalWrite(GPS_EN_PIN, LOW); // Bad job GPS! Sleep now
+        GPS_SLEEP_FLAG = 1;
+        LAST_GPS_ATTEMPT = now.unixtime(); 
+        debug_println("Giving up on GPS");
+       return 1;
    }else{
        debug_println("old or no data");
        debug_println(fix_age);
        return 1;
    }
-    // TODO we never put the GPS to sleep if it never gets the time.
-    // We need to give up eventually. Need a counter or something
-    return 1; // failed :(
 } // GPSdateTime
 
-void humanTime(){
+// Prints out the time in a human readable format. Only used for debugging
+#ifdef DEBUG
+void printhumanTime(){
     char buff[100];
     char *output = buff;
 
@@ -170,3 +175,4 @@ void humanTime(){
 
     return;
 }
+#endif

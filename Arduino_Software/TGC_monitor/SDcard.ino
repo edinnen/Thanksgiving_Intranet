@@ -29,11 +29,7 @@ void generateDataString(char data[]){
     // Take the various measurments and then write them to a char array
     debug_println("writeReadings");
 
-    //char dataBuff[150]; // Buffer used to output the sweet sweet data TODO set length to be reasonable
-    //char *data = dataBuff; // Pointer that points at the data buffer
     unsigned long time = now();
-
-    readReference(); // Calibrate the ADC
 
     // Create buffers to hold the data as a string and pass the variables to the function
     char BattV[10], SolarV[10], BattA[10], LoadA[10];
@@ -88,7 +84,7 @@ void newFile(){
     // Extensions are '.on' when the loads are connected. '.off' otherwise
 
     time_t t = now(); // Put the current unix time into variable t
-    unsigned long unix = t;
+    unsigned long unix = t; // TODO dumb
     debug_println(unix);
     char buff[500]; // Create a buffer for the header text
     char *header = buff; // Pointer that points to the buffer
@@ -120,7 +116,9 @@ void newFile(){
         LOG = SD.open(filename, FILE_WRITE); 
     }else{
         debug_println("filename already exists");
-        // TODO something here
+        delay(1100);
+        newFile();
+        return;
         }
     if (! LOG) {
         debug_println("couldnt create file");
@@ -132,7 +130,6 @@ void newFile(){
         LOG.print(header);
         LOG.flush();
 
-        //debug_println(filename);
         // Close the old file
         LOG.close();
     }else{

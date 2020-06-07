@@ -64,34 +64,6 @@ void readCmd(){
     }
 }
 
-void singleLiveData(){
-    char data[150];
-    generateDataString(data);
-    RPiSerial.print('<');
-    RPiSerial.print(data);
-    RPiSerial.print('>');
-}
-
-// Prints out the root directory of the SD card
-void printRootDirectory() {
-  File dir = SD.open("/");
-
-  if( !dir ){
-      RPiSerial.println("$$ Couldn't open SD card root");
-      return;
-  }
-
-  while (true) {
-    File entry =  dir.openNextFile();
-    if (! entry) break; // no more files!
-    RPiSerial.println(entry.name());
-    entry.close();
-  }
-  // I'm done command
-  RPiSerial.println("<>");
-}
-
-
 // reads data from the RPiSerial and parses out commands
 // sets a flag when complete indicating we should do something
 void readFromPy(){
@@ -137,6 +109,39 @@ void printFile(){
         RPiSerial.print("$$ bad file open: ");
         RPiSerial.println(receivedChars);
   }
+}
+
+// Prints out the root directory of the SD card
+void printRootDirectory() {
+  File dir = SD.open("/");
+
+  if( !dir ){
+      RPiSerial.println("$$ Couldn't open SD card root");
+      return;
+  }
+
+  while (true) {
+    File entry =  dir.openNextFile();
+    if (! entry) break; // no more files!
+    RPiSerial.println(entry.name());
+    entry.close();
+  }
+  // I'm done command
+  RPiSerial.println("<>");
+}
+
+void singleLiveData(){
+    char data[150];
+    generateDataString(data);
+    RPiSerial.print('<');
+    RPiSerial.print(data);
+    RPiSerial.print('>');
+}
+
+void dumpSettings(){
+    char data[150];
+    // debug flags, last gps fix, 
+    sprintf(data, "");
 }
 
 void deleteAllFilesOnSD() {
