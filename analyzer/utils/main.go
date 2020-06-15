@@ -24,7 +24,7 @@ func ParseReading(line string) (reading models.CabinReading, err error) {
 	}
 
 	// Parse the unix timestamp properly
-	unix := int32(stringToFloat(data[1]))
+	unix := int64(stringToFloat(data[1]))
 
 	// Remove any newline from the trailing data point
 	loads, err := strconv.Atoi(strings.TrimSpace(data[12]))

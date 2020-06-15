@@ -7,32 +7,30 @@ import (
 	"regexp"
 	"strings"
 	"sync"
+	"time"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/jmoiron/sqlx"
 	log "github.com/sirupsen/logrus"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/edinnen/Thanksgiving_Intranet/analyzer/models"
 	"github.com/edinnen/Thanksgiving_Intranet/analyzer/utils"
 )
 
 /**
- * Begins streaming readings from the arduino
+ * Begins streaming readings from the arduino.
  * @param  {chan CabinReading} dataStream The channel to send CabinReadings to
  * @param  {chan bool} done The channel to detect a stream cancel on
  * @return {void}
  */
-func (arduino ArduinoConnection) StreamData(dataStream chan models.CabinReading, wg *sync.WaitGroup, ctx context.Context) {
+func (arduino ArduinoConnection) StreamData(dataStream chan models.CabinReading, db *sqlx.DB, wg *sync.WaitGroup, ctx context.Context) {
 	defer wg.Done()
 
 	// Command the arduino to start streaming
-	success := arduino.Command(4)
+	success := arduino.Command(4, ctx)
 	if !success {
 		panic("Failed to initialize stream")
 	}
-
-	line := ""
-	capturing := false
 
 	// Loop until done
 	for {
@@ -42,9 +40,135 @@ func (arduino ArduinoConnection) StreamData(dataStream chan models.CabinReading,
 			log.Info("Data streaming stopped!")
 			return
 		default:
+			line, err := arduino.ReadLine(ctx, false)
+			if err != nil {
+				if !strings.Contains(fmt.Sprint(err), "shutdown") {
+					log.Error(err)
+					continue
+				}
+				continue
+			}
+			// Parse into a CabinReading struct
+			reading, err := utils.ParseReading(line)
+			if err != nil {
+				log.Error("Failed to parse line")
+				line = ""
+				continue
+			}
+
+			spew.Dump(reading)    // TODO: Debug output. Remove or handle debug env
+			reading.SendToDB(db)  // Insert the datapoint to our database
+			dataStream <- reading // Pass CabinReading to the channel
+			continue
+		}
+	}
+}
+
+/**
+ * Requests historical data to be streamed to us via serial.
+ * When a data point is read it is sent to the database.
+ * All historical files are commanded to be deleted off of
+ * the Arduino upon stream completion.
+ * @param  {*sqlx.DB} db  The database object
+ * @return {error}        An error, if any
+ */
+func (arduino ArduinoConnection) SendHistoricalToDB(dataStream chan models.CabinReading, db *sqlx.DB, ctx context.Context) error {
+	// Get file locations from arduino
+	files, err := arduino.listRootDirectory(ctx)
+	if err != nil {
+		return err
+	}
+	// loop over files
+	for _, file := range files {
+		success := make(chan bool, 1) // Create an execution blocker
+		done := make(chan bool, 1)
+
+		// Continually listen for the command response while we send the command
+		go func() {
+			err := arduino.readCommand(1, ctx)
+			if err != nil {
+				// Release execution blocker and exit the goroutine
+				log.Errorf("Error executing command: %v", err)
+				success <- false
+				close(success)
+				return
+			}
+			success <- true
+			close(success)
+		}()
+
+		// Read out lines of a file and send them to the database and events service
+		go func() {
+			// Wait for command success/fail notification
+			shouldProgress := <-success
+			if !shouldProgress {
+				err = fmt.Errorf("Command for file %s failed", file)
+				close(done)
+				return
+			}
+
+			for {
+				select {
+				case <-ctx.Done():
+					log.Debugf("Cancelling historical stream of %s due to shutdown", file)
+					close(done)
+					return
+				default:
+					line, err := arduino.ReadLine(ctx, false)
+					if err != nil {
+						if err == io.EOF {
+							close(done)
+							return
+						}
+						log.Error(err)
+						continue
+					}
+					// Parse into a CabinReading struct
+					reading, err := utils.ParseReading(line)
+					if err != nil {
+						log.Error("Failed to parse line")
+						line = ""
+						continue
+					}
+
+					spew.Dump(reading)    // TODO: Debug output. Remove or handle debug env
+					reading.SendToDB(db)  // Insert the datapoint to our database
+					dataStream <- reading // Pass CabinReading to the channel
+				}
+			}
+		}()
+
+		arduino.Write("<" + file + ">")
+		<-done
+	}
+	return err
+}
+
+/**
+ * Reads a single line, delimeted by < and >, from the arduino.
+ * @param  {context.Context} ctx 			  The application context
+ * @return {string, error}   line, err  The read line and any error
+ */
+func (arduino ArduinoConnection) ReadLine(ctx context.Context, enableTimeout bool) (line string, err error) {
+	capturing := false
+	var timer time.Time
+	if enableTimeout {
+		timer = time.Now().Add(3 * time.Second)
+	}
+	for {
+		select {
+		case <-ctx.Done():
+			line = ""
+			err = fmt.Errorf("Read terminated for shutdown")
+			return
+		default:
+			if enableTimeout && time.Now().After(timer) {
+				return "", fmt.Errorf("Request timed out")
+			}
 			// Read from the serial buffer
 			var buf = make([]byte, 8192)
-			nr, err := arduino.Read(buf)
+			var nr int
+			nr, err = arduino.Read(buf)
 			if err == io.EOF {
 				// Read timeout occurred, but we don't care; keep looping
 				continue
@@ -58,22 +182,11 @@ func (arduino ArduinoConnection) StreamData(dataStream chan models.CabinReading,
 			if wholeSequence.MatchString(value) {
 				// Retrieve the group between the <> delimiters
 				line = wholeSequence.FindStringSubmatch(value)[1]
-
-				// Parse into a CabinReading struct
-				reading, err := utils.ParseReading(line)
-				if err != nil {
-					log.Error("Failed to parse line")
-					line = ""
-					continue
+				// Send an EOF error if we recieve "<>"
+				if line == "" {
+					err = io.EOF
 				}
-
-				spew.Dump(reading)    // TODO: Debug output. Remove or handle debug env
-				dataStream <- reading // Pass CabinReading to the channel
-
-				// Reset line and keep reading
-				line = ""
-				capturing = false
-				continue
+				return
 			}
 
 			// Handle lines that have a start delimiter and optional following text
@@ -94,38 +207,19 @@ func (arduino ArduinoConnection) StreamData(dataStream chan models.CabinReading,
 			if capturing && endSequenceText.MatchString(value) {
 				capturing = false
 				line = line + endSequenceText.FindStringSubmatch(value)[1]
-
-				reading, err := utils.ParseReading(line)
-				if err != nil {
-					log.Error("Failed to parse line")
-					line = ""
-					continue
+				if line == "" {
+					err = io.EOF
 				}
-
-				spew.Dump(reading)
-				dataStream <- reading
-
-				line = ""
-				capturing = false
-				continue
+				return
 			}
 
 			// Handle lines that have an end delimiter only
 			endSequence := regexp.MustCompile(">")
 			if capturing && endSequence.MatchString(value) {
-				reading, err := utils.ParseReading(line)
-				if err != nil {
-					log.Error("Failed to parse line")
-					line = ""
-					continue
+				if line == "" {
+					err = io.EOF
 				}
-
-				spew.Dump(reading)
-				dataStream <- reading
-
-				line = ""
-				capturing = false
-				continue
+				return
 			}
 
 			// Handle lines with no delimiters if we've already seen a start delimiter
@@ -137,49 +231,19 @@ func (arduino ArduinoConnection) StreamData(dataStream chan models.CabinReading,
 }
 
 /**
- * Requests historical data to be streamed to us via serial.
- * When a data point is read it is sent to the database.
- * All historical files are commanded to be deleted off of
- * the Arduino upon stream completion.
- * @param  {*sqlx.DB} db The database object
- * @return {[type]}         [description]
+ * Retrieves an array containing the filepaths to log files on the arduino.
+ * @param  {context.Context} ctx 					  The application context
+ * @return {[]string, error} contents, err  The list of filepaths and any error
  */
-func (arduino ArduinoConnection) SendHistoricalToDB(db *sqlx.DB) error {
-	return nil
-}
+func (arduino ArduinoConnection) listRootDirectory(ctx context.Context) (contents []string, err error) {
+	// TODO: Maybe enclose individual filepath lines from arduino with angle delimiters to make this more accurate
 
-func (arduino ArduinoConnection) ReadLine() (output string, err error) {
-	recieving := false
-	var buf = make([]byte, 8192)
-	for {
-		var nr int
-		nr, _ = arduino.Read(buf)
-
-		data := strings.TrimSuffix(string(buf[:nr]), "\n")
-		log.Infof("ReadLine: %s\n", data)
-		if recieving {
-			if data != ">" {
-				output = output + data
-			} else {
-				output = strings.TrimSpace(output)
-				return
-			}
-		}
-
-		if data == "<" {
-			recieving = true
-			continue
-		}
-	}
-}
-
-func (arduino ArduinoConnection) listRootDirectory() (contents []string, err error) {
-	if !arduino.Command(2) {
+	if !arduino.Command(2, ctx) {
 		err = fmt.Errorf("Command failed")
 		return
 	}
 
-	log.Info("Command succeeded")
+	log.Debug("Command succeeded")
 
 	i := 0
 	for i < 1000 {
@@ -199,34 +263,4 @@ func (arduino ArduinoConnection) listRootDirectory() (contents []string, err err
 	}
 	err = fmt.Errorf("Failed to reach end of listRootDirectory read")
 	return
-}
-
-func (arduino ArduinoConnection) DownloadAllFiles() {
-	directory, _ := arduino.listRootDirectory()
-	log.Info(directory)
-}
-
-func (arduino ArduinoConnection) GetOfflineData() {
-	done := make(chan bool, 1)
-
-	go func() {
-		// var buf = make([]byte, 8192)
-		for {
-			select {
-			case <-done:
-				log.Info("Quit!")
-				return
-			default:
-				line, _ := arduino.ReadLine()
-				log.Infof("Read: %s\n", line)
-				if line == "<>" {
-					close(done)
-				}
-			}
-		}
-	}()
-
-	log.Info("Ctrl+C to quit")
-	<-done
-	log.Info("exiting")
 }

@@ -1,8 +1,8 @@
 package arduino
 
 import (
+	"context"
 	"fmt"
-	"io"
 	"path/filepath"
 	"regexp"
 	"strconv"
@@ -44,8 +44,8 @@ func (arduino ArduinoConnection) Write(data string) (int, error) {
  * @param  {int}  command The command number to pass to the arduino
  * @return {bool} success Notifies if the command was successfully recieved
  */
-func (arduino ArduinoConnection) Command(command int) (success bool) {
-	log.Infof("Sending command: %d\n", command)
+func (arduino ArduinoConnection) Command(command int, ctx context.Context) (success bool) {
+	log.Debugf("Sending command: %d\n", command)
 
 	cmd := fmt.Sprintf("<%d>", command) // Format our command for serial
 	done := make(chan bool, 1)          // Create an execution blocker
@@ -53,8 +53,13 @@ func (arduino ArduinoConnection) Command(command int) (success bool) {
 	// Continually listen for the command response while we send the command
 	success = false
 	go func() {
-		err := arduino.readCommand(command)
+		err := arduino.readCommand(command, ctx)
 		if err != nil {
+			if strings.Contains(fmt.Sprintf("%v", err), "timed out") {
+				log.Errorf("Response timed out")
+				close(done)
+				return
+			}
 			// Release execution blocker and exit the goroutine
 			log.Errorf("Error executing command: %v", err)
 			close(done)
@@ -87,19 +92,23 @@ func (arduino ArduinoConnection) Command(command int) (success bool) {
  * @param  {int}   command The command that was sent
  * @return {error}         A timeout or read error
  */
-func (arduino ArduinoConnection) readCommand(command int) error {
+func (arduino ArduinoConnection) readCommand(command int, ctx context.Context) error {
 	for {
-		var buf = make([]byte, 8192)
-		nr, err := arduino.Read(buf)
-		if err == io.EOF {
-			return fmt.Errorf("Command response read timed out")
+		// var buf = make([]byte, 8192)
+		// nr, err := arduino.Read(buf)
+		// if err == io.EOF {
+		// 	return fmt.Errorf("Command response read timed out")
+		// }
+		//
+		// // Convert returned bytes to string and trims \t, \n, ' ', etc
+		// value := strings.TrimSpace(string(buf[:nr]))
+		value, err := arduino.ReadLine(ctx, true)
+		if err != nil {
+			return err
 		}
 
-		// Convert returned bytes to string and trims \t, \n, ' ', etc
-		value := strings.TrimSpace(string(buf[:nr]))
-
 		// Command response not in read buffer
-		re := regexp.MustCompile(`<\d+>`)
+		re := regexp.MustCompile(`^\d+$`)
 		if !re.MatchString(value) {
 			continue
 		}
@@ -117,7 +126,7 @@ func (arduino ArduinoConnection) readCommand(command int) error {
  * Creates a new arduino connection to be used elsewhere
  * @return {ArduinoConnection, error} The connection and any error
  */
-func NewArduinoConnection() (ArduinoConnection, error) {
+func NewArduinoConnection(ctx context.Context) (ArduinoConnection, error) {
 	// Discover TTYs
 	matches, err := filepath.Glob("./virtual-tty")
 	// matches, err := filepath.Glob("/dev/tty[A-Za-z]*")
@@ -135,15 +144,20 @@ func NewArduinoConnection() (ArduinoConnection, error) {
 			continue
 		}
 
-		log.Info("Opening", match)
+		log.Debug("Opening", match)
 		connection := ArduinoConnection{
 			Interface: tty,
 		}
 
-		log.Info("Attempting to say hello...")
-		success := connection.Command(0)
-		if success {
-			return connection, nil
+		log.Debug("Attempting to say hello...")
+		i := 0
+		for i < 3 {
+			success := connection.Command(0, ctx)
+			if success {
+				return connection, nil
+			}
+			i++
+			log.Debugf("Attempt #%d failed", i)
 		}
 
 		return ArduinoConnection{}, fmt.Errorf("Failed to recieve hello response back")
