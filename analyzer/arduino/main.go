@@ -231,8 +231,8 @@ func (arduino ArduinoConnection) ReadLine(ctx context.Context, enableTimeout boo
  */
 func NewArduinoConnection(ctx context.Context) (ArduinoConnection, error) {
 	// Discover TTYs
-	matches, err := filepath.Glob("./virtual-tty")
-	// matches, err := filepath.Glob("/dev/tty[A-Za-z]*")
+	// matches, err := filepath.Glob("./virtual-tty")
+	matches, err := filepath.Glob("/dev/tty[A-Za-z]*")
 	if err != nil {
 		log.Fatalf("Failed to glob /dev/tty[A-Za-z]*")
 	}

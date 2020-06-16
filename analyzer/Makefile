@@ -3,7 +3,7 @@
 compile:
 	go install github.com/karalabe/xgo
 	mkdir -p build && cd build
-	xgo github.com/edinnen/Thanksgiving_Intranet/analyzer
+	xgo --targets=linux/arm-5,linux/amd64 github.com/edinnen/Thanksgiving_Intranet/analyzer 
 	cd ..
 
 compile-manual:
