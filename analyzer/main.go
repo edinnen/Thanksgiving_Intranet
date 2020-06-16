@@ -60,11 +60,11 @@ func main() {
 		}
 	}
 
-	// log.Info("Downloading historical data...")
-	// err = arduino.SendHistoricalToDB(broker.Notifier, db, ctx)
-	// if err != nil {
-	// 	log.Error(err)
-	// }
+	log.Info("Downloading historical data...")
+	err = arduino.SendHistoricalToDB(broker.Notifier, db, ctx)
+	if err != nil {
+		log.Error(err)
+	}
 
 	// Stream arduino data to our events server's event channel
 	wg.Add(1)
