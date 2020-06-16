@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"os/signal"
+	"runtime"
 	"sync"
 	"syscall"
 
@@ -14,8 +15,16 @@ import (
 	"github.com/edinnen/Thanksgiving_Intranet/analyzer/events"
 )
 
+var isRaspberryPi bool
+
 func init() {
-	log.SetLevel(log.DebugLevel)
+	isRaspberryPi = runtime.GOOS == "linux" && runtime.GOARCH == "arm"
+	if !isRaspberryPi {
+		// Enable DEBUG logging on non Raspberry Pi hosts
+		log.SetLevel(log.DebugLevel)
+	}
+
+	log.SetFormatter(&log.TextFormatter{TimestampFormat: "2006-01-02 15:04:05", FullTimestamp: true})
 }
 
 func main() {
@@ -44,16 +53,22 @@ func main() {
 	}
 	log.Info("Arduino connection established and greetings exchanged")
 
-	log.Info("Downloading historical data...")
-	err = arduino.SendHistoricalToDB(broker.Notifier, db, ctx)
-	if err != nil {
-		log.Error(err)
+	if isRaspberryPi {
+		err := arduino.SyncSystemTime(ctx)
+		if err != nil {
+			log.Errorf("Failed to set RPi system time: %v", err)
+		}
 	}
+
+	// log.Info("Downloading historical data...")
+	// err = arduino.SendHistoricalToDB(broker.Notifier, db, ctx)
+	// if err != nil {
+	// 	log.Error(err)
+	// }
 
 	// Stream arduino data to our events server's event channel
 	wg.Add(1)
 	go arduino.StreamData(broker.Notifier, db, wg, ctx)
-	log.Info("Arduino data stream instantiated")
 
 	termChan := make(chan os.Signal)
 	signal.Notify(termChan, os.Interrupt, os.Kill, syscall.SIGINT, syscall.SIGTERM)

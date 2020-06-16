@@ -3,6 +3,7 @@ package arduino
 import (
 	"context"
 	"fmt"
+	"io"
 	"path/filepath"
 	"regexp"
 	"strconv"
@@ -56,7 +57,7 @@ func (arduino ArduinoConnection) Command(command int, ctx context.Context) (succ
 		err := arduino.readCommand(command, ctx)
 		if err != nil {
 			if strings.Contains(fmt.Sprintf("%v", err), "timed out") {
-				log.Errorf("Response timed out")
+				log.Errorf("Timed out listening for response to command <%d>", command)
 				close(done)
 				return
 			}
@@ -94,14 +95,6 @@ func (arduino ArduinoConnection) Command(command int, ctx context.Context) (succ
  */
 func (arduino ArduinoConnection) readCommand(command int, ctx context.Context) error {
 	for {
-		// var buf = make([]byte, 8192)
-		// nr, err := arduino.Read(buf)
-		// if err == io.EOF {
-		// 	return fmt.Errorf("Command response read timed out")
-		// }
-		//
-		// // Convert returned bytes to string and trims \t, \n, ' ', etc
-		// value := strings.TrimSpace(string(buf[:nr]))
 		value, err := arduino.ReadLine(ctx, true)
 		if err != nil {
 			return err
@@ -119,6 +112,116 @@ func (arduino ArduinoConnection) readCommand(command int, ctx context.Context) e
 		}
 
 		return fmt.Errorf("Failed to read command response")
+	}
+}
+
+/**
+ * Reads a single line, delimeted by < and >, from the arduino.
+ * @param  {context.Context} ctx 			  The application context
+ * @return {string, error}   line, err  The read line and any error
+ */
+func (arduino ArduinoConnection) ReadLine(ctx context.Context, enableTimeout bool) (line string, err error) {
+	capturing := false
+	capturingErr := false
+	var timer time.Time
+	if enableTimeout {
+		timer = time.Now().Add(3 * time.Second)
+	}
+	for {
+		select {
+		case <-ctx.Done():
+			line = ""
+			err = fmt.Errorf("Read terminated for shutdown")
+			return
+		default:
+			if enableTimeout && time.Now().After(timer) {
+				return "", fmt.Errorf("Request timed out")
+			}
+			// Read from the serial buffer
+			var buf = make([]byte, 8192)
+			var nr int
+			nr, err = arduino.Read(buf)
+			if err == io.EOF {
+				// Read timeout occurred, but we don't care; keep looping
+				continue
+			}
+
+			value := strings.TrimSpace(string(buf[:nr]))
+
+			wholeError := regexp.MustCompile(`.*\$\$(.*?)\$\$.*`)
+			if wholeError.MatchString(value) {
+				line = ""
+				err = fmt.Errorf("Error from Arduino: %s", strings.TrimSpace(wholeError.FindStringSubmatch(value)[1]))
+				return
+			}
+
+			errorStart := regexp.MustCompile(`.*\$\$(.*)`)
+			if errorStart.MatchString(value) {
+				line = ""
+				capturing = true
+				capturingErr = true
+
+				line = errorStart.FindStringSubmatch(value)[1]
+				continue
+			}
+
+			errorEnd := regexp.MustCompile(`(.*?)\$\$.*`)
+			if capturingErr && errorEnd.MatchString(value) {
+				capturingErr = false
+				err = fmt.Errorf("Error from Arduino: %s", strings.TrimSpace(line+errorEnd.FindStringSubmatch(value)[1]))
+				line = ""
+				return
+			}
+
+			// Handle lines that contain a whole data point like:
+			// <0,1,2,3>
+			wholeSequence := regexp.MustCompile(".*<(.*?)>.*")
+			if wholeSequence.MatchString(value) {
+				// Retrieve the group between the <> delimiters
+				line = wholeSequence.FindStringSubmatch(value)[1]
+				// Send an EOF error if we recieve "<>"
+				if line == "" {
+					err = io.EOF
+				}
+				return
+			}
+
+			// Handle lines that have a start delimiter and optional following text
+			startSequence := regexp.MustCompile(".*<(.*)")
+			if startSequence.MatchString(value) {
+				// Ensure the line is empty as this is a new start delimiter
+				line = ""
+				capturing = true
+
+				line = startSequence.FindStringSubmatch(value)[1]
+				continue
+			}
+
+			// Handle lines that have end delimiter and preceeding text
+			endSequenceText := regexp.MustCompile("(.*?)>.*")
+			if capturing && endSequenceText.MatchString(value) {
+				capturing = false
+				line = line + endSequenceText.FindStringSubmatch(value)[1]
+				if line == "" {
+					err = io.EOF
+				}
+				return
+			}
+
+			// Handle lines that have an end delimiter only
+			endSequence := regexp.MustCompile(">")
+			if capturing && endSequence.MatchString(value) {
+				if line == "" {
+					err = io.EOF
+				}
+				return
+			}
+
+			// Handle lines with no delimiters if we've already seen a start delimiter
+			if capturing {
+				line = line + value
+			}
+		}
 	}
 }
 

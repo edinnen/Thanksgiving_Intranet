@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -20,7 +19,9 @@ import (
 /**
  * Begins streaming readings from the arduino.
  * @param  {chan CabinReading} dataStream The channel to send CabinReadings to
- * @param  {chan bool} done The channel to detect a stream cancel on
+ * @param  {*sqlx.DB}          db The database connection
+ * @param  {*sync.WaitGroup}   wg The wait group the call is a member of
+ * @param  {context.Context}   ctx The application context
  * @return {void}
  */
 func (arduino ArduinoConnection) StreamData(dataStream chan models.CabinReading, db *sqlx.DB, wg *sync.WaitGroup, ctx context.Context) {
@@ -29,8 +30,10 @@ func (arduino ArduinoConnection) StreamData(dataStream chan models.CabinReading,
 	// Command the arduino to start streaming
 	success := arduino.Command(4, ctx)
 	if !success {
+		// TODO: Try again a few times and don't panic?
 		panic("Failed to initialize stream")
 	}
+	log.Info("Arduino data stream instantiated")
 
 	// Loop until done
 	for {
@@ -49,7 +52,7 @@ func (arduino ArduinoConnection) StreamData(dataStream chan models.CabinReading,
 				continue
 			}
 			// Parse into a CabinReading struct
-			reading, err := utils.ParseReading(line)
+			reading, err := models.ParseCabinReading(line)
 			if err != nil {
 				log.Error("Failed to parse line")
 				line = ""
@@ -69,7 +72,9 @@ func (arduino ArduinoConnection) StreamData(dataStream chan models.CabinReading,
  * When a data point is read it is sent to the database.
  * All historical files are commanded to be deleted off of
  * the Arduino upon stream completion.
- * @param  {*sqlx.DB} db  The database object
+ * @param  {chan CabinReading} dataStream The channel to send CabinReadings to
+ * @param  {*sqlx.DB}          db The database connection
+ * @param  {context.Context}   ctx The application context
  * @return {error}        An error, if any
  */
 func (arduino ArduinoConnection) SendHistoricalToDB(dataStream chan models.CabinReading, db *sqlx.DB, ctx context.Context) error {
@@ -124,7 +129,7 @@ func (arduino ArduinoConnection) SendHistoricalToDB(dataStream chan models.Cabin
 						continue
 					}
 					// Parse into a CabinReading struct
-					reading, err := utils.ParseReading(line)
+					reading, err := models.ParseCabinReading(line)
 					if err != nil {
 						log.Error("Failed to parse line")
 						line = ""
@@ -145,89 +150,32 @@ func (arduino ArduinoConnection) SendHistoricalToDB(dataStream chan models.Cabin
 }
 
 /**
- * Reads a single line, delimeted by < and >, from the arduino.
- * @param  {context.Context} ctx 			  The application context
- * @return {string, error}   line, err  The read line and any error
+ * Synchronizes the RPi's system time with the Arduino.
+ * @param {context.Context} ctx The application context
  */
-func (arduino ArduinoConnection) ReadLine(ctx context.Context, enableTimeout bool) (line string, err error) {
-	capturing := false
-	var timer time.Time
-	if enableTimeout {
-		timer = time.Now().Add(3 * time.Second)
+func (arduino ArduinoConnection) SyncSystemTime(ctx context.Context) error {
+	success := arduino.Command(5, ctx)
+	if !success {
+		return fmt.Errorf("Failed to obtain response from command <5>")
 	}
-	for {
-		select {
-		case <-ctx.Done():
-			line = ""
-			err = fmt.Errorf("Read terminated for shutdown")
-			return
-		default:
-			if enableTimeout && time.Now().After(timer) {
-				return "", fmt.Errorf("Request timed out")
-			}
-			// Read from the serial buffer
-			var buf = make([]byte, 8192)
-			var nr int
-			nr, err = arduino.Read(buf)
-			if err == io.EOF {
-				// Read timeout occurred, but we don't care; keep looping
-				continue
-			}
 
-			value := strings.TrimSpace(string(buf[:nr]))
-
-			// Handle lines that contain a whole data point like:
-			// <0,1,2,3>
-			wholeSequence := regexp.MustCompile(".*<(.*?)>.*")
-			if wholeSequence.MatchString(value) {
-				// Retrieve the group between the <> delimiters
-				line = wholeSequence.FindStringSubmatch(value)[1]
-				// Send an EOF error if we recieve "<>"
-				if line == "" {
-					err = io.EOF
-				}
-				return
-			}
-
-			// Handle lines that have a start delimiter and optional following text
-			startSequence := regexp.MustCompile(".*<(.*)")
-			if startSequence.MatchString(value) {
-				capturing = true
-
-				// Ensure the line is empty as this is a new start delimiter
-				if line != "" {
-					line = ""
-				}
-				line = startSequence.FindStringSubmatch(value)[1]
-				continue
-			}
-
-			// Handle lines that have end delimiter and preceeding text
-			endSequenceText := regexp.MustCompile("(.*?)>.*")
-			if capturing && endSequenceText.MatchString(value) {
-				capturing = false
-				line = line + endSequenceText.FindStringSubmatch(value)[1]
-				if line == "" {
-					err = io.EOF
-				}
-				return
-			}
-
-			// Handle lines that have an end delimiter only
-			endSequence := regexp.MustCompile(">")
-			if capturing && endSequence.MatchString(value) {
-				if line == "" {
-					err = io.EOF
-				}
-				return
-			}
-
-			// Handle lines with no delimiters if we've already seen a start delimiter
-			if capturing {
-				line = line + value
-			}
-		}
+	line, err := arduino.ReadLine(ctx, true)
+	if err != nil {
+		return err
 	}
+
+	timeFormat := "2006-01-02 15:04:05"
+	arduinoTime, err := time.Parse(timeFormat, line)
+	if err != nil {
+		return err
+	}
+
+	err = utils.SetSystemDate(arduinoTime)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 /**
@@ -246,19 +194,28 @@ func (arduino ArduinoConnection) listRootDirectory(ctx context.Context) (content
 	log.Debug("Command succeeded")
 
 	i := 0
-	for i < 1000 {
+	for i < 10000 { // Read in at most 10,000 lines
 		i++
+		// Read in a <> encolsed line
+		line, err := arduino.ReadLine(ctx, false)
 
-		var buf = make([]byte, 8192)
-		nr, _ := arduino.Read(buf)
-		line := strings.TrimSpace(string(buf[:nr]))
-
-		if strings.Contains(line, ".ON") || strings.Contains(line, ".OFF") {
-			contents = append(contents, line)
+		if err != nil {
+			switch err {
+			case io.EOF: // We've reached the end of the file, return contents
+				return contents, nil
+			default:
+				return contents, err // Some other error, return it
+			}
+		}
+		if err == io.EOF {
+			return contents, nil
+		} else if err != nil {
+			return contents, err
 		}
 
-		if strings.Contains(line, "<>") {
-			return
+		// Select only .ON or .OFF log files
+		if strings.Contains(line, ".ON") || strings.Contains(line, ".OFF") {
+			contents = append(contents, line)
 		}
 	}
 	err = fmt.Errorf("Failed to reach end of listRootDirectory read")

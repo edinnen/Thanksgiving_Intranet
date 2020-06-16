@@ -1,53 +1,29 @@
 package utils
 
 import (
+	"fmt"
+	"os/exec"
 	"strconv"
-	"strings"
 	"time"
-
-	"github.com/edinnen/Thanksgiving_Intranet/analyzer/models"
 )
 
 /**
- * Parse a line of comma seperated data into a CabinReading struct
- * @param  {string}               line            The csv line to parse
- * @return {CabinReading, error} [reading, error] The struct and any error
+ * Sets the system date and clock.
+ * @param {time.Time} newTime The time to set the clock to
+ * @return {error} Any error. 'date' binary does not exist or setting failed
  */
-func ParseReading(line string) (reading models.CabinReading, err error) {
-	data := strings.Split(line, ",")
-
-	// Ensure we parse the non RFC 3339 timestamp from the arduino properly
-	timeFormat := "2006-01-02 15:04:05"
-	timestamp, err := time.Parse(timeFormat, data[0])
-	if err != nil {
-		return
+func SetSystemDate(newTime time.Time) error {
+	_, lookErr := exec.LookPath("date")
+	if lookErr != nil {
+		fmt.Printf("Date binary not found, cannot set system date: %s\n", lookErr.Error())
+		return lookErr
+	} else {
+		//dateString := newTime.Format("2006-01-2 15:4:5")
+		dateString := newTime.Format("2 Jan 2006 15:04:05")
+		fmt.Printf("Setting system date to: %s\n", dateString)
+		args := []string{"--set", dateString}
+		return exec.Command("date", args...).Run()
 	}
-
-	// Parse the unix timestamp properly
-	unix := int64(stringToFloat(data[1]))
-
-	// Remove any newline from the trailing data point
-	loads, err := strconv.Atoi(strings.TrimSpace(data[12]))
-	if err != nil {
-		return
-	}
-
-	reading = models.CabinReading{
-		Timestamp:       timestamp,
-		Unix:            unix,
-		BatteryVoltage:  stringToFloat(data[2]),
-		SolarVoltage:    stringToFloat(data[3]),
-		BatteryAmperage: stringToFloat(data[4]),
-		LoadAmperage:    stringToFloat(data[5]),
-		BatteryPercent:  stringToFloat(data[6]),
-		AvgBatteryPower: stringToFloat(data[7]),
-		AvgLoadPower:    stringToFloat(data[8]),
-		OutsideTemp:     stringToFloat(data[9]),
-		CabinTemp:       stringToFloat(data[10]),
-		BatteryTemp:     stringToFloat(data[11]),
-		LoadsConnected:  loads,
-	}
-	return
 }
 
 /**
@@ -55,7 +31,7 @@ func ParseReading(line string) (reading models.CabinReading, err error) {
  * @param  {string}  s The string encoded float64
  * @return {float64} The parsed value
  */
-func stringToFloat(s string) float64 {
+func StringToFloat(s string) float64 {
 	val, err := strconv.ParseFloat(s, 64)
 	if err != nil {
 		return 0.0
