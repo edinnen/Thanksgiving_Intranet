@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -120,35 +119,14 @@ func (arduino ArduinoConnection) SendHistoricalToDB(dataStream chan models.Cabin
 					close(done)
 					return
 				default:
-					// line, err := arduino.ReadLine(ctx, false)
-					// if err != nil {
-					// 	if err == io.EOF {
-					// 		close(done)
-					// 		return
-					// 	}
-					// 	log.Error(err)
-					// 	continue
-					// }
-					line := ""
-					for {
-						var buf = make([]byte, 8192)
-						var nr int
-						nr, err = arduino.Read(buf)
+					line, err := arduino.ReadLine(ctx, false)
+					if err != nil {
 						if err == io.EOF {
 							close(done)
 							return
-						} else if err != nil {
-							log.Error(err)
-							break
 						}
-
-						hasNewLine := regexp.MustCompile("\n")
-						if hasNewLine.MatchString(string(buf[:nr])) {
-							line = strings.TrimSpace(line + string(buf[:nr]))
-							break
-						}
-
-						line = line + string(buf[:nr])
+						log.Error(err)
+						continue
 					}
 
 					// Parse into a CabinReading struct

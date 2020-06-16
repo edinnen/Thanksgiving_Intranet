@@ -8,11 +8,13 @@ import (
 	"sync"
 	"syscall"
 
+	"github.com/davecgh/go-spew/spew"
 	log "github.com/sirupsen/logrus"
 
 	arduinoConnection "github.com/edinnen/Thanksgiving_Intranet/analyzer/arduino"
 	"github.com/edinnen/Thanksgiving_Intranet/analyzer/database"
 	"github.com/edinnen/Thanksgiving_Intranet/analyzer/events"
+	"github.com/edinnen/Thanksgiving_Intranet/analyzer/models"
 )
 
 var isRaspberryPi bool
@@ -23,6 +25,8 @@ func init() {
 		// Enable DEBUG logging on non Raspberry Pi hosts
 		log.SetLevel(log.DebugLevel)
 	}
+	// TODO: Remove this
+	log.SetLevel(log.DebugLevel)
 
 	log.SetFormatter(&log.TextFormatter{TimestampFormat: "2006-01-02 15:04:05", FullTimestamp: true})
 }
@@ -39,13 +43,13 @@ func main() {
 	srv := events.StartEventsServer(broker, wg)
 	log.Infof("Web server listening on %s", srv.Addr)
 
-	// log.Debug("Outputting database...")
-	// var output []models.CabinReading
-	// err := db.Select(&output, "SELECT * FROM readings")
-	// if err != nil {
-	// 	panic(err)
-	// }
-	// spew.Dump(output)
+	log.Debug("Outputting database...")
+	var output []models.CabinReading
+	err := db.Select(&output, "SELECT * FROM readings")
+	if err != nil {
+		panic(err)
+	}
+	spew.Dump(output)
 
 	arduino, err := arduinoConnection.NewArduinoConnection(ctx)
 	if err != nil {
@@ -60,11 +64,11 @@ func main() {
 		}
 	}
 
-	log.Info("Downloading historical data...")
-	err = arduino.SendHistoricalToDB(broker.Notifier, db, ctx)
-	if err != nil {
-		log.Error(err)
-	}
+	// log.Info("Downloading historical data...")
+	// err = arduino.SendHistoricalToDB(broker.Notifier, db, ctx)
+	// if err != nil {
+	// 	log.Error(err)
+	// }
 
 	// Stream arduino data to our events server's event channel
 	wg.Add(1)
