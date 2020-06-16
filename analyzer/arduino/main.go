@@ -146,6 +146,8 @@ func (arduino ArduinoConnection) ReadLine(ctx context.Context, enableTimeout boo
 				continue
 			}
 
+			log.Debugf("Read: %s", strings.TrimSpace(string(buf[:nr])))
+
 			value := strings.TrimSpace(string(buf[:nr]))
 
 			wholeError := regexp.MustCompile(`.*\$\$(.*?)\$\$.*`)
