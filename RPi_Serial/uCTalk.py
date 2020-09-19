@@ -308,3 +308,5 @@ def concatFiles():
 
     #export to csv
     combined_df.to_csv( processedFilename, index=False, encoding="utf-8")
+    reduceResolution(combined_df)
+

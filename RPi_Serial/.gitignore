@@ -1,3 +1,5 @@
 /output/*
 /fromSD/*
 /processedFiles/*
+*.swp
+*.bkp

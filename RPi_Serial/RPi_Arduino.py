@@ -57,6 +57,7 @@ def concatFiles():
 
         listOfFrames.append(df)
 
+
     # Combine all the file dataframes into one big one
     combined_df = pd.concat(listOfFrames)
 
@@ -92,22 +93,23 @@ def concatFiles():
 
 def main():
 
-#    uC.connectPi()
-#    connectTimeout = time.time() + 31
-#    while uC.writeCmd(0) != 0:
-#        if time.time() > connectTimeout:
-#            print("Timeout when trying to contact uC")
-#            return
-#    uC.getuCTime()
-#    uC.getuCDataOutput()
-#    uC.downloadAllFiles()
+    uC.connectPi()
+    connectTimeout = time.time() + 31
+    while uC.writeCmd(0) != 0:
+        if time.time() > connectTimeout:
+            print("Timeout when trying to contact uC")
+            return
+    uC.getuCTime()
+    uC.getuCDataOutput()
+    uC.downloadAllFiles()
     concatFiles()
 
     while True:
         print(uC.readLine())
 
 try:
-    main()
+    #main()
+    concatFiles()
 except(KeyboardInterrupt, SystemExit):
     print()
     print("Keyboard Interrupt. Exiting")

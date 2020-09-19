@@ -1,0 +1,23 @@
+Connecting to arduino...
+Connected to: /dev/ttyACM0
+Write command: 0
+Fetching the time...
+Write command: 5
+The time and date is: 
+Tue Jun 16 12:21:52 2020
+Fetching a line of data from the uC...
+Write command: 3
+1592310112,0.00,0.00,0.00,0.00,0.00,0.00,0.00,-127.00,-127.00,-127.00
+['1592310112', '0.00', '0.00', '0.00', '0.00', '0.00', '0.00', '0.00', '-127.00', '-127.00', '-127.00']
+[1592310112.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -127.0, -127.0, -127.0]
+Tue Jun 16 12:21:52 2020
+Write command: 2
+Fetching file names...
+Files found: 57
+File List:
+['<5EC3FD1F.ONN>', '<5EC3FD87.ONN>', '<5EC3FDBC.ONN>', '<5EC3FDFA.ONN>', '<5EC4051F.ONN>', '<5EC4053C.ONN>', '<5EC405C0.ONN>', '<5EC40640.ONN>', '<5EC42420.ONN>', '<5EC424A3.ONN>', '<5EC424EA.ONN>', '<5EC428F7.ONN>', '<5EC42979.ONN>', '<5EC429FB.ONN>', '<5EC42C4B.ONN>', '<5EC438FF.ONN>', '<5EC439C6.ONN>', '<5EC43B0D.ONN>', '<5EC446C6.ONN>', '<5EDCBA0D.ONN>', '<5EDD0BF9.ONN>', '<5EDD1066.ONN>', '<5EDD1706.ONN>', '<5EDD2158.ONN>', '<5EDE1BF1.ONN>', '<5EDF5348.ONN>', '<5EDEDAC2.ONN>', '<5EE23CFC.ONN>', '<5EE1C154.ONN>', '<5EE641CA.ONN>', '<5EE755FE.ONN>', '<5EE75648.ONN>', '<5EE75663.ONN>', '<5EE756B9.ONN>', '<5EE75779.ONN>', '<5EE75DBB.ONN>', '<5EE76081.ONN>', '<5EE760BF.ONN>', '<5EE760F6.ONN>', '<5EE76398.ONN>', '<5EE7641B.ONN>', '<5EE76650.ONN>', '<5EE766BF.ONN>', '<5EE766EF.ONN>', '<5EE7671D.ONN>', '<5EE7674A.ONN>', '<5EE7675A.ONN>', '<5EE811C7.ONN>', '<5EE8A418.ONN>', '<5EE8A465.ONN>', '<5EE8A72D.ONN>', '<5EE8B188.ONN>', '<5EE8B1B7.ONN>']
+
+Save File:  <5EC3FD1F.ONN>
+
+Keyboard Interrupt. Exiting
+Goodbye, uC

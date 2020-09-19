@@ -38,7 +38,7 @@ Good things take time. Be patient.
 
 // set to 1 for faster write/read frequencies and clock updates.
 // set to 0 for production numbers
-#define DEBUG_SPEEDUP_TIME 1
+#define DEBUG_SPEEDUP_TIME 0
 
 // Comment out to use actual temperature sensors
 //#define DEBUG_TEMPERATURE
@@ -104,7 +104,7 @@ elapsedMillis ENERGY_TIME_ELAPSED;
 // Could use the RTC but counting naps is fine.
 int NUM_NAPS_TAKEN = 0; // Number of naps taken during standby mode (loads disconnected). One 'nap' is ~8sec long
 // use 37 naps for about 5min between SD writes, or 150 naps for ~20min. Note: not very accurate 
-const int NUM_NAPS_BETWEEN_SD_WRITES = DEBUG_SPEEDUP_TIME ? 2 : (20*60)/8; 
+const int NUM_NAPS_BETWEEN_SD_WRITES = DEBUG_SPEEDUP_TIME ? 2 : (10*60)/8; 
 // This interval is used when loads are connected. It is generally higher resolution
 const int LOAD_INTERVAL = DEBUG_SPEEDUP_TIME ? 5*1000 : 10*1000; //milliseconds
 // Number of seconds between readings used to track power and energy usage
