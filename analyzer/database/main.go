@@ -1,3 +1,5 @@
+// Package database provides an sqlx DB connection to execute SQL commands on
+// an SQLite3 database named "cabin.db".
 package database
 
 import (
@@ -8,6 +10,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+// NewConnection opens the SQLite3 database and creates our table if necessary.
 func NewConnection() (db *sqlx.DB) {
 	db, err := sqlx.Open("sqlite3", ":memory:")
 	if err != nil {
@@ -36,8 +39,7 @@ func NewConnection() (db *sqlx.DB) {
       avg_load_power FLOAT64,
       outside_temp FLOAT64,
       cabin_temp FLOAT64,
-      battery_temp FLOAT64,
-      loads_connected INTEGER
+      battery_temp FLOAT64
       );
       CREATE INDEX idx_timestamp_readings
       ON readings (timestamp);

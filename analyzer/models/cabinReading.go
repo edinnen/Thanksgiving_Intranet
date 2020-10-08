@@ -1,3 +1,4 @@
+// Package models holds data structs and their related functions.
 package models
 
 import (
@@ -7,8 +8,10 @@ import (
 
 	"github.com/edinnen/Thanksgiving_Intranet/analyzer/utils"
 	"github.com/jmoiron/sqlx"
+	log "github.com/sirupsen/logrus"
 )
 
+// CabinReading holds data from readings recieved via the Arduino.
 type CabinReading struct {
 	Timestamp       time.Time `json:"timestamp" db:"timestamp"`
 	Unix            int64     `json:"unix" db:"unix"`
@@ -22,9 +25,9 @@ type CabinReading struct {
 	OutsideTemp     float64   `json:"outside_temp" db:"outside_temp"`
 	CabinTemp       float64   `json:"cabin_temp" db:"cabin_temp"`
 	BatteryTemp     float64   `json:"battery_temp" db:"battery_temp"`
-	LoadsConnected  int       `json:"loads_connected" db:"loads_connected"`
 }
 
+// SendToDB sends a CabinReading to the SQL database.
 func (reading CabinReading) SendToDB(db *sqlx.DB) error {
 	_, err := db.Exec(`
 		INSERT INTO readings (
@@ -39,9 +42,8 @@ func (reading CabinReading) SendToDB(db *sqlx.DB) error {
 			avg_load_power,
 			outside_temp,
 			cabin_temp,
-			battery_temp,
-			loads_connected
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+			battery_temp
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 	`,
 		reading.Timestamp,
 		reading.Unix,
@@ -55,49 +57,42 @@ func (reading CabinReading) SendToDB(db *sqlx.DB) error {
 		reading.OutsideTemp,
 		reading.CabinTemp,
 		reading.BatteryTemp,
-		reading.LoadsConnected,
 	)
+	if err != nil {
+		log.Error(err)
+	}
 	return err
 }
 
-/**
- * Parse a line of comma seperated data into a CabinReading struct
- * @param  {string}               line            The csv line to parse
- * @return {CabinReading, error} [reading, error] The struct and any error
- */
+// ParseCabinReading decodes a power reading CSV line into a CabinReading.
 func ParseCabinReading(line string) (reading CabinReading, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Error("Cabin reading failed to parse", r)
+		}
+	}()
 	data := strings.Split(line, ",")
 
-	// Ensure we parse the non RFC 3339 timestamp from the arduino properly
-	timeFormat := "2006-01-02 15:04:05"
-	timestamp, err := time.Parse(timeFormat, data[0])
-	if err != nil {
-		return
-	}
-
 	// Parse the unix timestamp properly
-	unix := int64(utils.StringToFloat(data[1]))
-
-	// Remove any newline from the trailing data point
-	loads, err := strconv.Atoi(strings.TrimSpace(data[12]))
+	unix, err := strconv.ParseInt(data[0], 10, 64)
 	if err != nil {
 		return
 	}
+	timestamp := time.Unix(unix, 0)
 
 	reading = CabinReading{
 		Timestamp:       timestamp,
 		Unix:            unix,
-		BatteryVoltage:  utils.StringToFloat(data[2]),
-		SolarVoltage:    utils.StringToFloat(data[3]),
-		BatteryAmperage: utils.StringToFloat(data[4]),
-		LoadAmperage:    utils.StringToFloat(data[5]),
-		BatteryPercent:  utils.StringToFloat(data[6]),
-		AvgBatteryPower: utils.StringToFloat(data[7]),
-		AvgLoadPower:    utils.StringToFloat(data[8]),
-		OutsideTemp:     utils.StringToFloat(data[9]),
-		CabinTemp:       utils.StringToFloat(data[10]),
-		BatteryTemp:     utils.StringToFloat(data[11]),
-		LoadsConnected:  loads,
+		BatteryVoltage:  utils.StringToFloat(data[1]),
+		SolarVoltage:    utils.StringToFloat(data[2]),
+		BatteryAmperage: utils.StringToFloat(data[3]),
+		LoadAmperage:    utils.StringToFloat(data[4]),
+		BatteryPercent:  utils.StringToFloat(data[5]),
+		AvgBatteryPower: utils.StringToFloat(data[6]),
+		AvgLoadPower:    utils.StringToFloat(data[7]),
+		OutsideTemp:     utils.StringToFloat(data[8]),
+		CabinTemp:       utils.StringToFloat(data[9]),
+		BatteryTemp:     utils.StringToFloat(strings.TrimSpace(data[10])), // Trim \n
 	}
 	return
 }
