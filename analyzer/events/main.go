@@ -1,5 +1,5 @@
 // Package events handles the creation and management of a Server Sent Events
-// broker.
+// broker. TODO: Look into using https://github.com/subchord/go-sse
 package events
 
 import (

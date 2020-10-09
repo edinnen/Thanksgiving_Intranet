@@ -40,7 +40,7 @@ bool STREAM_DATA_PY = false;
 
 // tracking when to send data to py when stream is requested
 elapsedMillis STREAM_DATA_ELAPSED;
-const int STREAM_DATA_INTERVAL = 3000;
+const int STREAM_DATA_INTERVAL = 1000;
 #endif
 
 void setup() {
