@@ -12,6 +12,7 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
+	"github.com/edinnen/Thanksgiving_Intranet/analyzer/api"
 	"github.com/edinnen/Thanksgiving_Intranet/analyzer/arduino"
 	"github.com/edinnen/Thanksgiving_Intranet/analyzer/database"
 	"github.com/edinnen/Thanksgiving_Intranet/analyzer/events"
@@ -73,9 +74,10 @@ func main() {
 	wg := &sync.WaitGroup{}        // Initialize wait group
 	defer db.Close()
 
+	go api.Start(db)
+
 	wg.Add(1)
 	srv := events.StartEventsServer(broker, wg)
-	log.Infof("Web server listening on %s", srv.Addr)
 
 	powerMonitor, err := arduino.NewConnection(ctx)
 	if err != nil {

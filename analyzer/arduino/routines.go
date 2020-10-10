@@ -59,7 +59,6 @@ func (arduino Connection) StreamData(ctx context.Context, dataStream chan models
 				continue
 			}
 
-			// spew.Dump(reading)    // TODO: Debug output. Remove or handle debug env
 			reading.SendToDB(db)  // Insert the datapoint to our database
 			dataStream <- reading // Pass CabinReading to the channel
 			continue
@@ -159,7 +158,6 @@ func (arduino Connection) SendHistoricalToDB(ctx context.Context, dataStream cha
 					continue
 				}
 
-				// spew.Dump(reading)    // TODO: Debug output. Remove or handle debug env
 				reading.SendToDB(db)  // Insert the datapoint to our database
 				dataStream <- reading // Pass CabinReading to the channel
 			}

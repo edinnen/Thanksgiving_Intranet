@@ -120,7 +120,7 @@ void printFile() {
       RPiSerial.print(",");
       RPiSerial.print(randomFloat(1.0, 5.0));
       RPiSerial.print(",");
-      RPiSerial.print(randomFloat(98.0, 100.0));
+      RPiSerial.print(randomFloat(65.0, 67.0));
       RPiSerial.print(",");
       RPiSerial.print(randomFloat(5.0, 6.0));
       RPiSerial.print(",");

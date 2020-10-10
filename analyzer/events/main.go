@@ -56,7 +56,7 @@ func (broker *Broker) listen() {
 			data, _ := json.Marshal(event)
 			// We got a new event from the outside!
 			// Send event to all connected clients
-			for clientMessageChan, _ := range broker.clients {
+			for clientMessageChan := range broker.clients {
 				clientMessageChan <- data
 			}
 		}
@@ -115,7 +115,7 @@ func (broker *Broker) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 func StartEventsServer(broker *Broker, wg *sync.WaitGroup) *http.Server {
 	srv := &http.Server{Addr: ":3030", Handler: broker}
 
-	// Run the server in the background
+	// Run the events broker in the background
 	go func() {
 		// Defer notifying the wait group that the server is closed until
 		// after srv.Shutdown() has been called and completed
@@ -127,6 +127,8 @@ func StartEventsServer(broker *Broker, wg *sync.WaitGroup) *http.Server {
 			log.Fatalf("ListenAndServe(): %v", err)
 		}
 	}()
+
+	log.Infof("Broadcasting readings on %s", srv.Addr)
 
 	// Returning reference so caller can call Shutdown()
 	return srv
