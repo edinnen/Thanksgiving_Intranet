@@ -66,16 +66,31 @@ void loadConnected() {
 
   if (STREAM_DATA_PY == true) {
     if (STREAM_DATA_ELAPSED > STREAM_DATA_INTERVAL) {
+      double anomalyBV = randomFloat(0.0, 100.0);
+      double anomalySV = randomFloat(0.0, 100.0);
+      double anomalyLA = randomFloat(0.0, 100.0);
       RPiSerial.print("<");
-      RPiSerial.print(1602129460 + i);
+      RPiSerial.print(1603085906 + i);
       RPiSerial.print(",");
-      RPiSerial.print(randomFloat(13.0, 15.0));
+      if (anomalyBV >= 99) {
+        RPiSerial.print(randomFloat(5.0, 8.0));
+      } else {
+        RPiSerial.print(randomFloat(13.0, 15.0));
+      }
       RPiSerial.print(",");
-      RPiSerial.print(randomFloat(10.0, 18.0));
+      if (anomalySV >= 99) {
+        RPiSerial.print(randomFloat(21.0, 25.0));
+      } else {
+        RPiSerial.print(randomFloat(10.0, 18.0)); 
+      }
       RPiSerial.print(",");
       RPiSerial.print(randomFloat(1.0, 5.0));
       RPiSerial.print(",");
-      RPiSerial.print(randomFloat(1.0, 5.0));
+      if (anomalyLA >= 99) {
+        RPiSerial.print(randomFloat(0.0, 0.25));
+      } else {
+        RPiSerial.print(randomFloat(2.0, 5.0));
+      }
       RPiSerial.print(",");
       RPiSerial.print(randomFloat(65.0, 67.0));
       RPiSerial.print(",");

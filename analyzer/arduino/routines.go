@@ -10,7 +10,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/jmoiron/sqlx"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/edinnen/Thanksgiving_Intranet/analyzer/models"
@@ -20,7 +19,7 @@ import (
 // StreamData begins streaming readings from the arduino.
 // Data will be read from the arduino, sent to the database,
 // and pushed as a sever sent event.
-func (arduino Connection) StreamData(ctx context.Context, dataStream chan models.CabinReading, db *sqlx.DB, wg *sync.WaitGroup) {
+func (arduino Connection) StreamData(ctx context.Context, dataStream chan models.CabinReading, wg *sync.WaitGroup) {
 	var streaming bool
 	defer wg.Done()
 
@@ -59,8 +58,8 @@ func (arduino Connection) StreamData(ctx context.Context, dataStream chan models
 				continue
 			}
 
-			reading.SendToDB(db)  // Insert the datapoint to our database
-			dataStream <- reading // Pass CabinReading to the channel
+			reading.SendToDB(arduino.DB, arduino.Mutex) // Insert the datapoint to our database
+			dataStream <- reading                       // Pass CabinReading to the channel
 			continue
 		}
 	}
@@ -77,7 +76,7 @@ func (arduino Connection) CancelStreaming(ctx context.Context) {
 // When a data point is read it is sent to the database.
 // All historical files are commanded to be deleted off of
 // the Arduino upon stream completion.
-func (arduino Connection) SendHistoricalToDB(ctx context.Context, dataStream chan models.CabinReading, db *sqlx.DB) error {
+func (arduino Connection) SendHistoricalToDB(ctx context.Context, dataStream chan models.CabinReading) error {
 	// Get file locations from arduino
 	files, err := arduino.listRootDirectory(ctx)
 	if err != nil {
@@ -158,8 +157,8 @@ func (arduino Connection) SendHistoricalToDB(ctx context.Context, dataStream cha
 					continue
 				}
 
-				reading.SendToDB(db)  // Insert the datapoint to our database
-				dataStream <- reading // Pass CabinReading to the channel
+				reading.SendToDB(arduino.DB, arduino.Mutex) // Insert the datapoint to our database
+				dataStream <- reading                       // Pass CabinReading to the channel
 			}
 			close(done)
 		}()

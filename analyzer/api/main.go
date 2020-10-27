@@ -2,7 +2,9 @@ package api
 
 import (
 	"net/http"
+	"sync"
 
+	"github.com/edinnen/Thanksgiving_Intranet/analyzer/api/historical"
 	"github.com/edinnen/Thanksgiving_Intranet/analyzer/api/users"
 	"github.com/gorilla/mux"
 	"github.com/jmoiron/sqlx"
@@ -10,7 +12,8 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func Start(db *sqlx.DB) {
+// Start our API attached to the given database
+func Start(db *sqlx.DB, mutex *sync.Mutex) {
 	// Setup our router
 	c := cors.New(cors.Options{
 		AllowedOrigins:   []string{"*"},
@@ -24,7 +27,8 @@ func Start(db *sqlx.DB) {
 	routerAPI := main.PathPrefix(apiSubrouterPath).Subrouter()
 
 	// Load our endpoints
-	users.Load(routerAPI, db)
+	users.Load(routerAPI, db, mutex)
+	historical.Load(routerAPI, db, mutex)
 
 	server := &http.Server{Addr: ":8080", Handler: c.Handler(main)}
 

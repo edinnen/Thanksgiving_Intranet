@@ -22,7 +22,7 @@ func SetSystemDate(newTime time.Time) error {
 func StringToFloat(s string) float64 {
 	val, err := strconv.ParseFloat(s, 64)
 	if err != nil {
-		return 0.0
+		return val
 	}
 	return val
 }

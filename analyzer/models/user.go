@@ -2,6 +2,7 @@ package models
 
 import (
 	"fmt"
+	"sync"
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/jmoiron/sqlx"
@@ -11,6 +12,7 @@ import (
 
 var hmacSecret = []byte("Cave all day; Party all night")
 
+// User of the cabin intranet
 type User struct {
 	ID       int64  `json:"id" db:"id"`
 	Name     string `json:"name" db:"name"`
@@ -20,7 +22,9 @@ type User struct {
 	JWT      string `json:"token"`
 }
 
-func (user *User) Create(db *sqlx.DB) error {
+// Create persists a User to our database
+func (user *User) Create(db *sqlx.DB, mutex *sync.Mutex) error {
+	mutex.Lock()
 	statement := `INSERT INTO users (
 		name,
 		email,
@@ -28,6 +32,7 @@ func (user *User) Create(db *sqlx.DB) error {
 		type
 	) VALUES (?, ?, ?, ?);`
 	result, err := db.Exec(statement, user.Name, user.Email, user.Password, user.Type)
+	mutex.Unlock()
 	if err != nil {
 		return err
 	}
@@ -41,6 +46,7 @@ func (user *User) Create(db *sqlx.DB) error {
 	return nil
 }
 
+// GenerateJWT creates a new JWT for a user
 func (user *User) GenerateJWT() error {
 	// Create the Claims
 	claims := &jwt.StandardClaims{
@@ -53,6 +59,7 @@ func (user *User) GenerateJWT() error {
 	return err
 }
 
+// ValidateJWT verifies the user's provided JWT
 func (user User) ValidateJWT() (bool, error) {
 	// Parse takes the token string and a function for looking up the key. The latter is especially
 	// useful if you use multiple keys for your application.  The standard is to use 'kid' in the
@@ -71,9 +78,12 @@ func (user User) ValidateJWT() (bool, error) {
 	return token.Valid, err
 }
 
-func (user User) Exists(db *sqlx.DB) (User, bool) {
+// Exists checks if a user exists in the DB and optionally returns it
+func (user User) Exists(db *sqlx.DB, mutex *sync.Mutex) (User, bool) {
+	mutex.Lock()
 	var u User
 	err := db.Get(&u, "SELECT id, name, email, password, type FROM users WHERE email = ?;", user.Email)
+	mutex.Unlock()
 	if err != nil {
 		log.Errorf("Failed to pull user: %v", err)
 		return u, false
@@ -81,6 +91,7 @@ func (user User) Exists(db *sqlx.DB) (User, bool) {
 	return u, true
 }
 
+// HashPassword hashes the value of a Password stored in a User
 func (user *User) HashPassword() {
 	// Use GenerateFromPassword to hash & salt pwd.
 	// MinCost is just an integer constant provided by the bcrypt
@@ -96,11 +107,14 @@ func (user *User) HashPassword() {
 	user.Password = string(hash)
 }
 
-func (user User) ValidatePassword(db *sqlx.DB) bool {
+// ValidatePassword checks the password provided by the user with the hashed version stored in our database
+func (user User) ValidatePassword(db *sqlx.DB, mutex *sync.Mutex) bool {
 	plainPwd := []byte(user.Password)
 
+	mutex.Lock()
 	var hashedPwd string
 	err := db.Get(&hashedPwd, "SELECT password FROM users WHERE email = ?", user.Email)
+	mutex.Unlock()
 	if err != nil {
 		log.Error(err)
 		return false

@@ -10,8 +10,10 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
+	"github.com/jmoiron/sqlx"
 	"github.com/tarm/serial"
 
 	log "github.com/sirupsen/logrus"
@@ -20,6 +22,50 @@ import (
 // Connection to an Arduino via TTY
 type Connection struct {
 	Interface *serial.Port
+	DB        *sqlx.DB
+	Mutex     *sync.Mutex
+}
+
+// NewConnection wakes up and establishes a connection with an Arduino
+func NewConnection(ctx context.Context, db *sqlx.DB, mutex *sync.Mutex) (Connection, error) {
+	// Discover TTYs
+	matches, err := filepath.Glob("/dev/ttyUSB*")
+	if err != nil {
+		log.Fatalf("Failed to glob /dev/tty[A-Za-z]*")
+	}
+
+	// Attempt to connect to a discovered TTY and say hello to initialize
+	var tty *serial.Port
+	for _, match := range matches {
+		c := &serial.Config{Name: match, Baud: 115200, ReadTimeout: 7 * time.Second}
+		tty, err = serial.OpenPort(c)
+		if err != nil {
+			// Failed to open TTY
+			continue
+		}
+
+		log.Debug("Opening", match)
+		connection := Connection{
+			Interface: tty,
+			DB:        db,
+			Mutex:     mutex,
+		}
+
+		log.Info("Waking up arduino...")
+		attempt1 := connection.Command(ctx, 0)
+		if attempt1 {
+			return connection, nil
+		}
+		time.Sleep(100 * time.Millisecond)
+		attempt2 := connection.Command(ctx, 0)
+		if attempt2 {
+			return connection, nil
+		}
+
+		return Connection{}, fmt.Errorf("Failed to recieve hello response back")
+	}
+
+	panic("Failed to connect to any TTY")
 }
 
 // Read from the connection's serial buffer and writes to the passed byte array.
@@ -199,44 +245,4 @@ func (arduino Connection) ReadLine(ctx context.Context, enableTimeout bool) (lin
 			}
 		}
 	}
-}
-
-// NewConnection wakes up and establishes a connection with an Arduino
-func NewConnection(ctx context.Context) (Connection, error) {
-	// Discover TTYs
-	matches, err := filepath.Glob("/dev/ttyUSB*")
-	if err != nil {
-		log.Fatalf("Failed to glob /dev/tty[A-Za-z]*")
-	}
-
-	// Attempt to connect to a discovered TTY and say hello to initialize
-	var tty *serial.Port
-	for _, match := range matches {
-		c := &serial.Config{Name: match, Baud: 115200, ReadTimeout: 7 * time.Second}
-		tty, err = serial.OpenPort(c)
-		if err != nil {
-			// Failed to open TTY
-			continue
-		}
-
-		log.Debug("Opening", match)
-		connection := Connection{
-			Interface: tty,
-		}
-
-		log.Info("Waking up arduino...")
-		attemp1 := connection.Command(ctx, 0)
-		if attemp1 {
-			return connection, nil
-		}
-		time.Sleep(100 * time.Millisecond)
-		attemp2 := connection.Command(ctx, 0)
-		if attemp2 {
-			return connection, nil
-		}
-
-		return Connection{}, fmt.Errorf("Failed to recieve hello response back")
-	}
-
-	panic("Failed to connect to any TTY")
 }

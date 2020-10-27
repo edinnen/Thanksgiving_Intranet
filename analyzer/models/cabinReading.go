@@ -4,6 +4,7 @@ package models
 import (
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/edinnen/Thanksgiving_Intranet/analyzer/utils"
@@ -28,7 +29,8 @@ type CabinReading struct {
 }
 
 // SendToDB sends a CabinReading to the SQL database.
-func (reading CabinReading) SendToDB(db *sqlx.DB) error {
+func (reading CabinReading) SendToDB(db *sqlx.DB, mutex *sync.Mutex) error {
+	mutex.Lock()
 	_, err := db.Exec(`
 		INSERT INTO readings (
 			timestamp,
@@ -58,6 +60,7 @@ func (reading CabinReading) SendToDB(db *sqlx.DB) error {
 		reading.CabinTemp,
 		reading.BatteryTemp,
 	)
+	mutex.Unlock()
 	if err != nil {
 		log.Error(err)
 	}

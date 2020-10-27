@@ -48,7 +48,7 @@ void readCmd() {
     RPiSerial.println("<5>");
     delay(100);
     RPiSerial.print('<');
-    RPiSerial.print("1602129460");
+    RPiSerial.print("1603085906");
     //RPiSerial.print(now());
     RPiSerial.println('>');
     return;
@@ -110,7 +110,7 @@ void printFile() {
 
   int i;
   for (i = 0; i < 10; i++) {
-      RPiSerial.print(1602129460 + i);
+      RPiSerial.print(1603085906 + i);
       RPiSerial.print(",");
       RPiSerial.print(randomFloat(13.0, 15.0));
       RPiSerial.print(",");
@@ -184,7 +184,7 @@ void singleLiveData() {
   //generateDataString(data);
   RPiSerial.print('<');
   //RPiSerial.print(data);
-  RPiSerial.print("1596509816,13.85,0.00,-0.12,0.02,-1.00,0.00,0.00,13.69,18.75,19.88");
+  RPiSerial.print("1603085906,13.85,0.00,-0.12,0.02,-1.00,0.00,0.00,13.69,18.75,19.88");
   RPiSerial.println('>');
 }
 

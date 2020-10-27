@@ -16,6 +16,7 @@ import (
 	"github.com/edinnen/Thanksgiving_Intranet/analyzer/arduino"
 	"github.com/edinnen/Thanksgiving_Intranet/analyzer/database"
 	"github.com/edinnen/Thanksgiving_Intranet/analyzer/events"
+	"github.com/edinnen/Thanksgiving_Intranet/analyzer/statistics"
 )
 
 var isRaspberryPi bool
@@ -69,17 +70,17 @@ func main() {
 
 	ctx, cancelFunc := context.WithCancel(context.Background())
 
-	db := database.NewConnection() // Initialize our database connection
-	broker := events.NewServer()   // Initialize a new server for HTTP events
-	wg := &sync.WaitGroup{}        // Initialize wait group
+	db, mutex := database.NewConnection() // Initialize our database connection
+	broker := events.NewServer()          // Initialize a new server for HTTP events
+	wg := &sync.WaitGroup{}               // Initialize wait group
 	defer db.Close()
 
-	go api.Start(db)
+	go api.Start(db, mutex)
 
 	wg.Add(1)
 	srv := events.StartEventsServer(broker, wg)
 
-	powerMonitor, err := arduino.NewConnection(ctx)
+	powerMonitor, err := arduino.NewConnection(ctx, db, mutex)
 	if err != nil {
 		panic(err)
 	}
@@ -93,14 +94,17 @@ func main() {
 	}
 
 	log.Info("Downloading historical data...")
-	err = powerMonitor.SendHistoricalToDB(ctx, broker.Notifier, db)
+	err = powerMonitor.SendHistoricalToDB(ctx, broker.Notifier)
 	if err != nil {
 		log.Error(err)
 	}
 
 	// Stream arduino data to our events server's event channel
 	wg.Add(1)
-	go powerMonitor.StreamData(ctx, broker.Notifier, db, wg)
+	go powerMonitor.StreamData(ctx, broker.Notifier, wg)
+
+	statisticsEngine := statistics.NewClient(db, mutex)
+	go statisticsEngine.DetectStreamAnomalies()
 
 	termChan := make(chan os.Signal)
 	signal.Notify(termChan, os.Interrupt, os.Kill, syscall.SIGINT, syscall.SIGTERM)
@@ -109,8 +113,9 @@ func main() {
 	log.Warn("Shutdown signal received")
 
 	cancelFunc() // Signal cancellation to workers via context.Context
-	ctx2, _ := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx2, cancelTimeout := context.WithTimeout(context.Background(), 10*time.Second)
 	srv.Shutdown(ctx2)
 	wg.Wait() // Block here until are workers have terminated
+	cancelTimeout()
 	log.Info("All workers done, shutting down!")
 }

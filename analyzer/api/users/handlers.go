@@ -5,31 +5,13 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
 	"strings"
 
+	"github.com/edinnen/Thanksgiving_Intranet/analyzer/api/utils"
 	"github.com/edinnen/Thanksgiving_Intranet/analyzer/models"
-	log "github.com/sirupsen/logrus"
+	"github.com/gorilla/mux"
 )
-
-type userRequest struct {
-	ID int `json:"id"`
-}
-
-// respondWithError responds with error
-func respondWithError(w http.ResponseWriter, code int, err error) {
-	e := fmt.Sprintf("%s", err)
-	log.Error(e)
-	respondWithJSON(w, code, map[string]string{"error": e})
-}
-
-// respondWithJSON responds with json formatted code
-func respondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
-	w.Header().Set("Content-Type", "application/json")
-	if code != 200 {
-		w.WriteHeader(code)
-	}
-	json.NewEncoder(w).Encode(payload)
-}
 
 func decodeUser(requestBody io.ReadCloser) (user models.User, err error) {
 	decoder := json.NewDecoder(requestBody)
@@ -37,78 +19,113 @@ func decodeUser(requestBody io.ReadCloser) (user models.User, err error) {
 	return
 }
 
-// samplePost - Accepts a POST request
 func createUser(w http.ResponseWriter, r *http.Request) {
 	user, err := decodeUser(r.Body)
 	if err != nil {
-		respondWithError(w, http.StatusBadRequest, err)
+		utils.RespondWithError(w, http.StatusBadRequest, err)
 		return
 	}
 
 	user.Email = strings.TrimSpace(strings.ToLower(user.Email))
 
 	user.HashPassword()
-	err = user.Create(db)
+	err = user.Create(db, mutex)
 	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, err)
+		utils.RespondWithError(w, http.StatusInternalServerError, err)
+		return
 	}
 	// Create JWT and return it
 	user.GenerateJWT()
 
-	respondWithJSON(w, http.StatusOK, user)
+	utils.RespondWithJSON(w, http.StatusOK, user)
 }
 
 func loginUser(w http.ResponseWriter, r *http.Request) {
 	recievedLogin, err := decodeUser(r.Body)
 	if err != nil {
-		respondWithError(w, http.StatusBadRequest, err)
+		utils.RespondWithError(w, http.StatusBadRequest, err)
 		return
 	}
 
 	if recievedLogin.Email == "" || recievedLogin.Password == "" {
-		respondWithError(w, http.StatusBadRequest, fmt.Errorf("Must supply password and email"))
+		utils.RespondWithError(w, http.StatusBadRequest, fmt.Errorf("Must supply password and email"))
 		return
 	}
 
-	user, exists := recievedLogin.Exists(db)
+	user, exists := recievedLogin.Exists(db, mutex)
 	if !exists {
-		respondWithError(w, http.StatusBadRequest, fmt.Errorf("User with email %s not found", user.Email))
+		utils.RespondWithError(w, http.StatusBadRequest, fmt.Errorf("User with email %s not found", user.Email))
 		return
 	}
 	user.Password = recievedLogin.Password
 
-	if !user.ValidatePassword(db) {
-		respondWithError(w, http.StatusUnauthorized, fmt.Errorf("Password or email incorrect"))
+	if !user.ValidatePassword(db, mutex) {
+		utils.RespondWithError(w, http.StatusUnauthorized, fmt.Errorf("Password or email incorrect"))
 		return
 	}
 
 	err = user.GenerateJWT()
 	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, err)
+		utils.RespondWithError(w, http.StatusInternalServerError, err)
 		return
 	}
 
 	user.Password = ""
-	respondWithJSON(w, http.StatusOK, user)
+	utils.RespondWithJSON(w, http.StatusOK, user)
 }
 
 func validateUser(w http.ResponseWriter, r *http.Request) {
 	user, err := decodeUser(r.Body)
 	if err != nil {
-		respondWithError(w, http.StatusBadRequest, err)
+		utils.RespondWithError(w, http.StatusBadRequest, err)
 		return
 	}
 
 	valid, err := user.ValidateJWT()
 	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, err)
+		utils.RespondWithError(w, http.StatusInternalServerError, err)
 		return
 	}
 
 	if !valid {
-		respondWithError(w, http.StatusUnauthorized, fmt.Errorf("Provided JWT was invalid"))
+		utils.RespondWithError(w, http.StatusUnauthorized, fmt.Errorf("Provided JWT was invalid"))
 		return
 	}
 
-	respondWithJSON(w, http.StatusNoContent, valid)
+	utils.RespondWithJSON(w, http.StatusNoContent, valid)
+}
+
+func getAnomalies(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	user, err := strconv.Atoi(vars["user"])
+	if err != nil {
+		utils.RespondWithError(w, http.StatusInternalServerError, err)
+		return
+	}
+	var anomalies []models.Anomalies
+	statement := `
+		SELECT rowid, * FROM anomalies a
+		LEFT JOIN anomalies_users au 
+			ON a.rowid = au.anomaly_id
+		WHERE au.anomaly_id IS NULL;`
+	err = db.Select(&anomalies, statement, user)
+	if err != nil {
+		utils.RespondWithError(w, http.StatusInternalServerError, err)
+		return
+	}
+
+	utils.RespondWithJSON(w, http.StatusOK, anomalies)
+}
+
+func markAnomalyRead(w http.ResponseWriter, r *http.Request) {
+	var anomalyUser models.AnomaliesUsers
+	decoder := json.NewDecoder(r.Body)
+	err := decoder.Decode(&anomalyUser)
+	if err != nil || anomalyUser.AnomalyID == 0 || anomalyUser.UserID == 0 {
+		utils.RespondWithError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	anomalyUser.SendToDB(db, mutex)
+	utils.RespondWithJSON(w, http.StatusOK, nil)
 }
