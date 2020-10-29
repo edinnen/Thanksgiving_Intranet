@@ -13,7 +13,7 @@ import (
 // SetSystemDate sets the system date and clock.
 func SetSystemDate(newTime time.Time) error {
 	dateString := newTime.Format("2006-01-2 15:04:05")
-	log.Infof("Setting system date to: %s\n", dateString)
+	log.Infof("Setting system date to: %s", dateString)
 	cmd := exec.Command("sudo", "date", "-s", fmt.Sprintf("%s", dateString))
 	return cmd.Run()
 }

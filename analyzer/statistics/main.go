@@ -96,7 +96,7 @@ func computeAnomalous(field string, readings []models.CabinReading, values []big
 			return models.Anomalies{}
 		}
 
-		anomaly, _ := anomalyDetector.EventIsAnomalous(*big.NewFloat(value.(float64)), big.NewFloat(0.01))
+		anomaly, _ := anomalyDetector.EventIsAnomalous(*big.NewFloat(value.(float64)), big.NewFloat(0.001))
 		if anomaly {
 			anomalous = append(anomalous, reading)
 			log.Info("Found anomalous value", value, "for", field)

@@ -1,4 +1,4 @@
-.DEFAULT_GOAL := compile
+.DEFAULT_GOAL := compile-upload
 
 compile:
 	go install github.com/karalabe/xgo
@@ -13,5 +13,4 @@ compile-manual:
 compile-upload:
 	mkdir -p build
 	GOPATH=~/go/ xgo --targets=linux/arm --dest build /Users/ethan/go/src/github.com/edinnen/Thanksgiving_Intranet/analyzer
-	mv ./build/analyzer-linux-arm-5 ./build/analyzer
-	scp ./build/analyzer pi@10.0.0.173:~/go/bin
+	rsync -z --progress -e "ssh -i ~/.ssh/id_rsa" ./build/analyzer-linux-arm-5 pi@thanksgiving.cabin:~/go/bin/analyzer
