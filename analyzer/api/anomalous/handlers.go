@@ -21,7 +21,7 @@ func getAnomalous(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	user, err := strconv.Atoi(vars["user"])
 	var anomalies []models.Anomaly
-	statement := `SELECT a.rowid as id, a.*, 0 as read FROM anomalies a LEFT JOIN anomalies_users au ON a.rowid = au.anomaly_id WHERE au.user_id IS NULL UNION SELECT a.rowid as id, a.*, CASE WHEN au.user_id IS NULL THEN 0 ELSE 1 END as read FROM anomalies a LEFT JOIN anomalies_users au ON a.rowid = au.anomaly_id WHERE au.user_id = ?;`
+	statement := `SELECT a.*, 0 as read FROM anomalies a LEFT JOIN anomalies_users au ON a.rowid = au.anomaly_id WHERE au.user_id IS NULL UNION SELECT a.*, CASE WHEN au.user_id IS NULL THEN 0 ELSE 1 END as read FROM anomalies a LEFT JOIN anomalies_users au ON a.rowid = au.anomaly_id WHERE au.user_id = ? ORDER BY a.unix DESC LIMIT 100;`
 	mutex.Lock()
 	err = db.Select(&anomalies, statement, user)
 	mutex.Unlock()

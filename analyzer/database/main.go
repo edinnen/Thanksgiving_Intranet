@@ -102,6 +102,7 @@ func ensureAnomaliesUsersTable(db *sqlx.DB) {
 	schema := `CREATE TABLE IF NOT EXISTS anomalies_users (
 		user_id    INTEGER,
 		anomaly_id INTEGER,
+		FOREIGN KEY (user_id) REFERENCES users(id),
 		FOREIGN KEY (anomaly_id) REFERENCES anomalies(id),
 		UNIQUE(user_id, anomaly_id)
 	);
