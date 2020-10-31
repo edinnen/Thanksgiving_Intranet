@@ -5,12 +5,10 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"strconv"
 	"strings"
 
 	"github.com/edinnen/Thanksgiving_Intranet/analyzer/api/utils"
 	"github.com/edinnen/Thanksgiving_Intranet/analyzer/models"
-	"github.com/gorilla/mux"
 )
 
 func decodeUser(requestBody io.ReadCloser) (user models.User, err error) {
@@ -93,39 +91,4 @@ func validateUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	utils.RespondWithJSON(w, http.StatusNoContent, valid)
-}
-
-func getAnomalies(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	user, err := strconv.Atoi(vars["user"])
-	if err != nil {
-		utils.RespondWithError(w, http.StatusInternalServerError, err)
-		return
-	}
-	var anomalies []models.Anomalies
-	statement := `
-		SELECT rowid, * FROM anomalies a
-		LEFT JOIN anomalies_users au 
-			ON a.rowid = au.anomaly_id
-		WHERE au.anomaly_id IS NULL;`
-	err = db.Select(&anomalies, statement, user)
-	if err != nil {
-		utils.RespondWithError(w, http.StatusInternalServerError, err)
-		return
-	}
-
-	utils.RespondWithJSON(w, http.StatusOK, anomalies)
-}
-
-func markAnomalyRead(w http.ResponseWriter, r *http.Request) {
-	var anomalyUser models.AnomaliesUsers
-	decoder := json.NewDecoder(r.Body)
-	err := decoder.Decode(&anomalyUser)
-	if err != nil || anomalyUser.AnomalyID == 0 || anomalyUser.UserID == 0 {
-		utils.RespondWithError(w, http.StatusBadRequest, err)
-		return
-	}
-
-	anomalyUser.SendToDB(db, mutex)
-	utils.RespondWithJSON(w, http.StatusOK, nil)
 }

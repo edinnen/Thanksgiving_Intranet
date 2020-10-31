@@ -6,6 +6,28 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
+type Anomaly struct {
+	Type string `json:"name" db:"name"`
+	*CabinReading
+	Read bool `json:"read" db:"read"`
+}
+type AnomalyUser struct {
+	UserID    int64 `json:"user_id" db:"user_id`
+	AnomalyID int64 `json:"anomaly_id" db:"anomaly_id"`
+}
+
+func (anomalyUser AnomalyUser) MarkRead(db *sqlx.DB, mutex *sync.Mutex) error {
+	mutex.Lock()
+	_, err := db.Exec(`
+		INSERT INTO anomalies_users (
+			user_id,
+			anomaly_id
+		) VALUES (?,?);
+	`, anomalyUser.UserID, anomalyUser.AnomalyID)
+	mutex.Unlock()
+	return err
+}
+
 // Anomalies holds anomalous data readings
 type Anomalies struct {
 	Name     string         `json:"name"`

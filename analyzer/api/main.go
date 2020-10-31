@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"sync"
 
+	"github.com/edinnen/Thanksgiving_Intranet/analyzer/api/anomalous"
 	"github.com/edinnen/Thanksgiving_Intranet/analyzer/api/historical"
 	"github.com/edinnen/Thanksgiving_Intranet/analyzer/api/users"
 	"github.com/gorilla/mux"
@@ -75,14 +76,15 @@ func Start(db *sqlx.DB, mutex *sync.Mutex) {
 	// Load our endpoints
 	users.Load(routerAPI, db, mutex)
 	historical.Load(routerAPI, db, mutex)
+	anomalous.Load(routerAPI, db, mutex)
 
 	// Serve react app. Handle / after any subroutes to avoid catching all routes
 	react := spaHandler{staticPath: "/var/www", indexPath: "index.html"}
 	main.PathPrefix("/").Handler(react)
 
-	server := &http.Server{Addr: ":8080", Handler: c.Handler(main)}
+	server := &http.Server{Handler: c.Handler(main)}
 
-	log.Info("API started on port :8080")
+	log.Info("API started on port :80")
 
 	// Prevents memory leak
 	server.SetKeepAlivesEnabled(false)

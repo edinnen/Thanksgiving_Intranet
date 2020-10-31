@@ -25,6 +25,7 @@ func NewConnection() (db *sqlx.DB, mutex *sync.Mutex) {
 	}
 	db = sqlx.NewDb(sqlite, "sqlite3")
 
+	enableForeignKeys(db)
 	ensureReadingsTable(db)
 	ensureUsersTable(db)
 	ensureAnomaliesTable(db)
@@ -32,100 +33,101 @@ func NewConnection() (db *sqlx.DB, mutex *sync.Mutex) {
 	return
 }
 
+func enableForeignKeys(db *sqlx.DB) {
+	log.Info("Enabling database foreign keys...")
+	foreignKeySchema := `PRAGMA foreign_keys = ON;`
+	_, err := db.Exec(foreignKeySchema)
+	if err != nil {
+		panic(err)
+	}
+}
+
 // ensureReadingsTable checks for the readings table. Creates it if necessary.
 func ensureReadingsTable(db *sqlx.DB) {
-	_, err := db.Query("SELECT * FROM readings;")
-	if err != nil {
-		log.Info("Readings table does not exist. Creating...")
-		schema := `CREATE TABLE readings (
-			timestamp         TIMESTAMP,
-			unix              INTEGER,
-			battery_voltage   FLOAT64,
-			solar_voltage     FLOAT64,
-			battery_amperage  FLOAT64,
-			load_amperage     FLOAT64,
-			battery_percent   FLOAT64,
-			avg_battery_power FLOAT64,
-			avg_load_power    FLOAT64,
-			outside_temp      FLOAT64,
-			cabin_temp        FLOAT64,
-			battery_temp      FLOAT64
-			);
-			CREATE INDEX idx_unix_readings
-			ON readings (unix);`
+	log.Info("Readings table does not exist. Creating...")
+	schema := `CREATE TABLE IF NOT EXISTS readings (
+		timestamp         TIMESTAMP,
+		unix              INTEGER,
+		battery_voltage   FLOAT64,
+		solar_voltage     FLOAT64,
+		battery_amperage  FLOAT64,
+		load_amperage     FLOAT64,
+		battery_percent   FLOAT64,
+		avg_battery_power FLOAT64,
+		avg_load_power    FLOAT64,
+		outside_temp      FLOAT64,
+		cabin_temp        FLOAT64,
+		battery_temp      FLOAT64
+		);
+		CREATE INDEX idx_unix_readings
+		ON readings (unix);`
 
-		// execute a query on the server
-		_, err = db.Exec(schema)
-		if err != nil {
-			panic(err)
-		}
+	// execute a query on the server
+	_, err := db.Exec(schema)
+	if err != nil {
+		panic(err)
 	}
 }
 
 func ensureAnomaliesTable(db *sqlx.DB) {
-	_, err := db.Query("SELECT * FROM anomalies;")
-	if err != nil {
-		log.Info("Anomalies table does not exist. Creating...")
-		schema := `CREATE TABLE anomalies (
-			name			  TEXT,
-			timestamp         TIMESTAMP,
-			unix              INTEGER,
-			battery_voltage   FLOAT64,
-			solar_voltage     FLOAT64,
-			battery_amperage  FLOAT64,
-			load_amperage     FLOAT64,
-			battery_percent   FLOAT64,
-			avg_battery_power FLOAT64,
-			avg_load_power    FLOAT64,
-			outside_temp      FLOAT64,
-			cabin_temp        FLOAT64,
-			battery_temp      FLOAT64
-		);
-		CREATE INDEX idx_unix_anomalies ON anomalies (unix);
-		CREATE INDEX idx_name_anomalies ON anomalies (name);`
+	log.Info("Anomalies table does not exist. Creating...")
+	schema := `CREATE TABLE IF NOT EXISTS anomalies (
+		id			  	  INTEGER NOT NULL,
+		name			  TEXT,
+		timestamp         TIMESTAMP,
+		unix              INTEGER,
+		battery_voltage   FLOAT64,
+		solar_voltage     FLOAT64,
+		battery_amperage  FLOAT64,
+		load_amperage     FLOAT64,
+		battery_percent   FLOAT64,
+		avg_battery_power FLOAT64,
+		avg_load_power    FLOAT64,
+		outside_temp      FLOAT64,
+		cabin_temp        FLOAT64,
+		battery_temp      FLOAT64,
+		PRIMARY KEY(id)
+	);
+	CREATE INDEX idx_unix_anomalies ON anomalies (unix);
+	CREATE INDEX idx_name_anomalies ON anomalies (name);`
 
-		_, err = db.Exec(schema)
-		if err != nil {
-			panic(err)
-		}
+	_, err := db.Exec(schema)
+	if err != nil {
+		panic(err)
 	}
 }
 
 func ensureAnomaliesUsersTable(db *sqlx.DB) {
-	_, err := db.Query("SELECT * FROM anomalies_users;")
-	if err != nil {
-		log.Info("Anomalies/Users table does not exist. Creating...")
-		schema := `CREATE TABLE anomalies_users (
-			user_id    INTEGER,
-			anomaly_id INTEGER
-		);
-		CREATE INDEX idx_user_anomaliesusers ON anomalies_users (user_id);
-		CREATE INDEX idx_anomaly_anomaliesusers ON anomalies_users (anomaly_id);`
+	log.Info("Anomalies/Users table does not exist. Creating...")
+	schema := `CREATE TABLE IF NOT EXISTS anomalies_users (
+		user_id    INTEGER,
+		anomaly_id INTEGER,
+		FOREIGN KEY (anomaly_id) REFERENCES anomalies(id),
+		UNIQUE(user_id, anomaly_id)
+	);
+	CREATE INDEX idx_user_anomaliesusers ON anomalies_users (user_id);
+	CREATE INDEX idx_anomaly_anomaliesusers ON anomalies_users (anomaly_id);`
 
-		_, err = db.Exec(schema)
-		if err != nil {
-			panic(err)
-		}
+	_, err := db.Exec(schema)
+	if err != nil {
+		panic(err)
 	}
 }
 
 // ensureUsersTable checks for the users table. Creates it if necessary
 func ensureUsersTable(db *sqlx.DB) {
-	_, err := db.Query("SELECT * FROM users;")
-	if err != nil {
-		log.Info("Users table does not exist. Creating...")
-		schema := `CREATE TABLE users (
-			id		 INTEGER PRIMARY KEY,
-			name 	 TEXT,
-			email 	 TEXT UNIQUE,
-			password TEXT,
-			type     TEXT
-		);
-		CREATE INDEX idx_email_users ON users (email);`
+	log.Info("Users table does not exist. Creating...")
+	schema := `CREATE TABLE IF NOT EXISTS users (
+		id		 INTEGER PRIMARY KEY,
+		name 	 TEXT,
+		email 	 TEXT UNIQUE,
+		password TEXT,
+		type     TEXT
+	);
+	CREATE INDEX idx_email_users ON users (email);`
 
-		_, err = db.Exec(schema)
-		if err != nil {
-			panic(err)
-		}
+	_, err := db.Exec(schema)
+	if err != nil {
+		panic(err)
 	}
 }

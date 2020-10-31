@@ -5,7 +5,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/edinnen/Thanksgiving_Intranet/analyzer/models"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/oleiade/reflections.v1"
@@ -65,11 +64,6 @@ func (stats *Engine) DetectStreamAnomalies() {
 		baAnomalies := batteryAmperageAnomalies(stats.readings, stats.timeRange)
 		laAnomalies := loadAmperageAnomalies(stats.readings, stats.timeRange)
 		btAnomalies := batteryTempAnomalies(stats.readings, stats.timeRange)
-		spew.Dump(bvAnomalies)
-		spew.Dump(svAnomalies)
-		spew.Dump(baAnomalies)
-		spew.Dump(laAnomalies)
-		spew.Dump(btAnomalies)
 		bvAnomalies.SendToDB(stats.db, stats.mutex)
 		svAnomalies.SendToDB(stats.db, stats.mutex)
 		baAnomalies.SendToDB(stats.db, stats.mutex)
@@ -99,7 +93,7 @@ func computeAnomalous(field string, readings []models.CabinReading, values []big
 		anomaly, _ := anomalyDetector.EventIsAnomalous(*big.NewFloat(value.(float64)), big.NewFloat(0.001))
 		if anomaly {
 			anomalous = append(anomalous, reading)
-			log.Info("Found anomalous value", value, "for", field)
+			log.Infof("Found anomalous value %v for %s", value, field)
 		}
 	}
 	return models.Anomalies{

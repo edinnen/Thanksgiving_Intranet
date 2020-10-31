@@ -20,6 +20,4 @@ func Load(router *mux.Router, dbConn *sqlx.DB, mux *sync.Mutex) {
 	router.HandleFunc("/users", createUser).Methods(http.MethodPost)
 	router.HandleFunc("/users/login", loginUser).Methods(http.MethodPost)
 	router.HandleFunc("/users/validate", validateUser).Methods(http.MethodPost)
-	router.HandleFunc("/users/{user}/anomalies", getAnomalies).Methods(http.MethodGet)
-	router.HandleFunc("/users/anomalies", markAnomalyRead).Methods(http.MethodPost)
 }

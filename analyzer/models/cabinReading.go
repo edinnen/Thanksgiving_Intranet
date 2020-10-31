@@ -14,6 +14,7 @@ import (
 
 // CabinReading holds data from readings recieved via the Arduino.
 type CabinReading struct {
+	ID              int64     `json:"id" db:"id"`
 	Timestamp       time.Time `json:"timestamp" db:"timestamp"`
 	Unix            int64     `json:"unix" db:"unix"`
 	BatteryVoltage  float64   `json:"battery_voltage" db:"battery_voltage"`
