@@ -13,6 +13,7 @@ var (
 	mutex *sync.Mutex
 )
 
+// Load mounts the subrouter on the router and matches each path with a handler
 func Load(router *mux.Router, dbConn *sqlx.DB, mux *sync.Mutex) {
 	db = dbConn
 	mutex = mux

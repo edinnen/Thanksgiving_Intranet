@@ -14,6 +14,7 @@ import (
 	"github.com/sec51/goanomaly"
 )
 
+// Engine holds necessary values for our statistics engine
 type Engine struct {
 	db        *sqlx.DB
 	mutex     *sync.Mutex
@@ -21,11 +22,13 @@ type Engine struct {
 	timeRange TimeRange
 }
 
+// TimeRange defines a to/from range for our queries
 type TimeRange struct {
 	From time.Time
 	To   time.Time
 }
 
+// NewClient creates a new statistics engine
 func NewClient(db *sqlx.DB, mutex *sync.Mutex) Engine {
 	return Engine{
 		db:    db,
@@ -33,6 +36,7 @@ func NewClient(db *sqlx.DB, mutex *sync.Mutex) Engine {
 	}
 }
 
+// SetReadingsData searches for readings within the engine's currently defined range
 func (stats *Engine) SetReadingsData() error {
 	var readings []models.CabinReading
 	from := stats.timeRange.From.Unix()
@@ -46,6 +50,7 @@ func (stats *Engine) SetReadingsData() error {
 	return err
 }
 
+// DetectStreamAnomalies checks for anomalous data over a three minute time range into the past
 func (stats *Engine) DetectStreamAnomalies() {
 	log.Info("Monitoring data stream for anomalies")
 	for now := range time.Tick(3 * time.Minute) {
@@ -72,6 +77,9 @@ func (stats *Engine) DetectStreamAnomalies() {
 	}
 }
 
+// computeAnomalous detects any data anomalies for a particular field in a CabinReading
+// between the given TimeRange. Anomalous data is computed as `p(x) < k` via the
+// Gaussian normal distribution formaula where k is 0.001.
 func computeAnomalous(field string, readings []models.CabinReading, values []big.Float, tsRange TimeRange) (anomalies models.Anomalies) {
 	anomalyDetector := goanomaly.NewAnomalyDetection(values...)
 
