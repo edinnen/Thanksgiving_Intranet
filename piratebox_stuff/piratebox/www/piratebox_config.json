@@ -1,6 +1,0 @@
-
-{ "piratebox" : { "module" : { 
-   "upload" : { "status" : true , "file" : "modules/upload.html" ,   "upload_style" : "droopy" ,   "droopy_port" : "8080", "droopy_host" : "Thanksgiving.cabin"  } 
-,  "shoutbox" : { "status" : true , "file" : "modules/chat.html" } 
-, "version" : "piratebox-ws_1.1.4 ## master...origin/master 8370426 Merge branch 'hotfix-1.1.4'"
- }  } }
