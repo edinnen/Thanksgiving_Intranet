@@ -1,3 +1,5 @@
+// Package arduino provides an interface for sending commands
+// and recieving data via a TTY connected Arduino.
 package arduino
 
 import (
@@ -8,44 +10,77 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
+	"github.com/jmoiron/sqlx"
 	"github.com/tarm/serial"
 
 	log "github.com/sirupsen/logrus"
 )
 
-// Holds all our serial connection information
-type ArduinoConnection struct {
+// Connection to an Arduino via TTY
+type Connection struct {
 	Interface *serial.Port
+	DB        *sqlx.DB
+	Mutex     *sync.Mutex
 }
 
-/**
- * Read from the connection's serial buffer and writes to the
- * passed byte array.
- * @param  {[]byte}     buf The byte buffer to write to
- * @return {int, error}     The number of read bytes and an error, if any
- */
-func (arduino ArduinoConnection) Read(buf []byte) (int, error) {
+// NewConnection wakes up and establishes a connection with an Arduino
+func NewConnection(ctx context.Context, db *sqlx.DB, mutex *sync.Mutex) (Connection, error) {
+	// Discover TTYs
+	matches, err := filepath.Glob("/dev/ttyUSB*")
+	if err != nil {
+		log.Fatalf("Failed to glob /dev/tty[A-Za-z]*")
+	}
+
+	// Attempt to connect to a discovered TTY and say hello to initialize
+	var tty *serial.Port
+	for _, match := range matches {
+		c := &serial.Config{Name: match, Baud: 115200, ReadTimeout: 7 * time.Second}
+		tty, err = serial.OpenPort(c)
+		if err != nil {
+			// Failed to open TTY
+			continue
+		}
+
+		log.Debug("Opening", match)
+		connection := Connection{
+			Interface: tty,
+			DB:        db,
+			Mutex:     mutex,
+		}
+
+		log.Info("Waking up arduino...")
+		attempt1 := connection.Command(ctx, 0)
+		if attempt1 {
+			return connection, nil
+		}
+		time.Sleep(100 * time.Millisecond)
+		attempt2 := connection.Command(ctx, 0)
+		if attempt2 {
+			return connection, nil
+		}
+
+		return Connection{}, fmt.Errorf("Failed to recieve hello response back")
+	}
+
+	panic("Failed to connect to any TTY")
+}
+
+// Read from the connection's serial buffer and writes to the passed byte array.
+func (arduino Connection) Read(buf []byte) (int, error) {
 	return arduino.Interface.Read(buf)
 }
 
-/**
- * Write a string to the serial buffer.
- * @param  {string}     data The string to write to the arduino
- * @return {int, error}			 The number of written bytes and an error, if any
- */
-func (arduino ArduinoConnection) Write(data string) (int, error) {
+// Write a string to the serial buffer.
+func (arduino Connection) Write(data string) (int, error) {
 	buf := []byte(data) // Ensure our data is a byte array
 	return arduino.Interface.Write(buf)
 }
 
-/**
- * Send a command to the arduino.
- * @param  {int}  command The command number to pass to the arduino
- * @return {bool} success Notifies if the command was successfully recieved
- */
-func (arduino ArduinoConnection) Command(command int, ctx context.Context) (success bool) {
+// Command sends a command to the Arduino.
+func (arduino Connection) Command(ctx context.Context, command int) (success bool) {
 	log.Debugf("Sending command: %d\n", command)
 
 	cmd := fmt.Sprintf("<%d>", command) // Format our command for serial
@@ -54,10 +89,15 @@ func (arduino ArduinoConnection) Command(command int, ctx context.Context) (succ
 	// Continually listen for the command response while we send the command
 	success = false
 	go func() {
-		err := arduino.readCommand(command, ctx)
+		err := arduino.readCommand(ctx, command)
 		if err != nil {
 			if strings.Contains(fmt.Sprintf("%v", err), "timed out") {
-				log.Errorf("Timed out listening for response to command <%d>", command)
+				msg := fmt.Sprintf("Timed out listening for response to command <%d>", command)
+				if command == 0 {
+					log.Debug(msg)
+				} else {
+					log.Error(msg)
+				}
 				close(done)
 				return
 			}
@@ -71,29 +111,13 @@ func (arduino ArduinoConnection) Command(command int, ctx context.Context) (succ
 	}()
 
 	// Send the command and await the response before returning success status
-	if command != 0 {
-		arduino.Write(cmd)
-		<-done
-		return
-	}
-
-	// The arduino doesn't always respond nicely to the first command it gets
-	// so send the "Hello" command 5 times rather than once
-	var i int
-	for i < 5 {
-		i++
-		arduino.Write(cmd)
-	}
+	arduino.Write(cmd)
 	<-done
 	return
 }
 
-/**
- * Reads a command response from the arduino.
- * @param  {int}   command The command that was sent
- * @return {error}         A timeout or read error
- */
-func (arduino ArduinoConnection) readCommand(command int, ctx context.Context) error {
+// readCommand reads a command response from the arduino.
+func (arduino Connection) readCommand(ctx context.Context, command int) error {
 	for {
 		value, err := arduino.ReadLine(ctx, true)
 		if err != nil {
@@ -115,12 +139,8 @@ func (arduino ArduinoConnection) readCommand(command int, ctx context.Context) e
 	}
 }
 
-/**
- * Reads a single line, delimeted by < and >, from the arduino.
- * @param  {context.Context} ctx 			  The application context
- * @return {string, error}   line, err  The read line and any error
- */
-func (arduino ArduinoConnection) ReadLine(ctx context.Context, enableTimeout bool) (line string, err error) {
+// ReadLine reads a single line, delimited by < and >, from the arduino.
+func (arduino Connection) ReadLine(ctx context.Context, enableTimeout bool) (line string, err error) {
 	capturing := false
 	capturingErr := false
 	var timer time.Time
@@ -225,48 +245,4 @@ func (arduino ArduinoConnection) ReadLine(ctx context.Context, enableTimeout boo
 			}
 		}
 	}
-}
-
-/**
- * Creates a new arduino connection to be used elsewhere
- * @return {ArduinoConnection, error} The connection and any error
- */
-func NewArduinoConnection(ctx context.Context) (ArduinoConnection, error) {
-	// Discover TTYs
-	// matches, err := filepath.Glob("./virtual-tty")
-	matches, err := filepath.Glob("/dev/tty[A-Za-z]*")
-	if err != nil {
-		log.Fatalf("Failed to glob /dev/tty[A-Za-z]*")
-	}
-
-	// Attempt to connect to a discovered TTY and say hello to initialize
-	var tty *serial.Port
-	for _, match := range matches {
-		c := &serial.Config{Name: match, Baud: 115200, ReadTimeout: 7 * time.Second}
-		tty, err = serial.OpenPort(c)
-		if err != nil {
-			// Failed to open TTY
-			continue
-		}
-
-		log.Debug("Opening", match)
-		connection := ArduinoConnection{
-			Interface: tty,
-		}
-
-		log.Debug("Attempting to say hello...")
-		i := 0
-		for i < 3 {
-			success := connection.Command(0, ctx)
-			if success {
-				return connection, nil
-			}
-			i++
-			log.Debugf("Attempt #%d failed", i)
-		}
-
-		return ArduinoConnection{}, fmt.Errorf("Failed to recieve hello response back")
-	}
-
-	panic("Failed to connect to any TTY")
 }

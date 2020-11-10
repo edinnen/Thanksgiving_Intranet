@@ -1,3 +1,5 @@
+// Package events handles the creation and management of a Server Sent Events
+// broker. TODO: Look into using https://github.com/subchord/go-sse
 package events
 
 import (
@@ -11,7 +13,7 @@ import (
 	"github.com/edinnen/Thanksgiving_Intranet/analyzer/models"
 )
 
-// A Server Sent Events broker
+// Broker for Server Sent Events
 type Broker struct {
 	Notifier       chan models.CabinReading // Events are pushed by main events-gathering routine
 	newClients     chan chan []byte         // New client connections
@@ -19,10 +21,7 @@ type Broker struct {
 	clients        map[chan []byte]bool     // Client connections registry
 }
 
-/**
- * Initializes a new SSE server.
- * @returns {*Broker} The SSE server handler
- */
+// NewServer initializes a new SSE server.
 func NewServer() (broker *Broker) {
 	// Instantiate a broker
 	broker = &Broker{
@@ -37,10 +36,7 @@ func NewServer() (broker *Broker) {
 	return
 }
 
-/**
- * Listens for new clients, closing clients, and events to send to clients.
- * @return {void}
- */
+// listen for new clients, closing clients, and events to send to clients.
 func (broker *Broker) listen() {
 	for {
 		select {
@@ -60,19 +56,14 @@ func (broker *Broker) listen() {
 			data, _ := json.Marshal(event)
 			// We got a new event from the outside!
 			// Send event to all connected clients
-			for clientMessageChan, _ := range broker.clients {
+			for clientMessageChan := range broker.clients {
 				clientMessageChan <- data
 			}
 		}
 	}
 }
 
-/**
- * The ServeHTTP handler for our broker.
- * @param  {http.ResponseWriter} rw  The HTTP ResponseWriter
- * @param  {http.Request}        req The HTTP Request pointer
- * @return {void}
- */
+// ServeHTTP handles http requests for our broker.
 func (broker *Broker) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	// Make sure that the writer supports flushing.
 	flusher, ok := rw.(http.Flusher)
@@ -120,16 +111,11 @@ func (broker *Broker) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 
 }
 
-/**
- * Starts the SSE server in the background.
- * @param   {*Broker}         broker The SSE server handler
- * @param   {*sync.WaitGroup} wg     The WaitGroup that this server is a member of
- * @returns {*http.Server}           The initialized HTTP server
- */
+// StartEventsServer starts the SSE server as a background process
 func StartEventsServer(broker *Broker, wg *sync.WaitGroup) *http.Server {
 	srv := &http.Server{Addr: ":3030", Handler: broker}
 
-	// Run the server in the background
+	// Run the events broker in the background
 	go func() {
 		// Defer notifying the wait group that the server is closed until
 		// after srv.Shutdown() has been called and completed
@@ -141,6 +127,8 @@ func StartEventsServer(broker *Broker, wg *sync.WaitGroup) *http.Server {
 			log.Fatalf("ListenAndServe(): %v", err)
 		}
 	}()
+
+	log.Infof("Broadcasting readings on %s", srv.Addr)
 
 	// Returning reference so caller can call Shutdown()
 	return srv

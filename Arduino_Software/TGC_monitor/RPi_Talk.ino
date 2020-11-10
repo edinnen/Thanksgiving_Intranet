@@ -28,6 +28,8 @@ void readCmd(){
             return;
     }else if(strcmp(receivedChars, "2") == 0){
             RPiSerial.println("<2>");
+            // Ensure we don't print command response on the same line as filenames
+            delay(100);
             printRootDirectory();
             return;
     }else if(strcmp(receivedChars, "3") == 0){
@@ -42,6 +44,7 @@ void readCmd(){
             return;
     }else if(strcmp(receivedChars, "5") == 0){
             RPiSerial.println("<5>");
+            delay(100);
             RPiSerial.print('<');
             RPiSerial.print(now());
             RPiSerial.println('>');
@@ -101,7 +104,7 @@ void printFile(){
 
     if (fileObj) {
         while (fileObj.available()) {
-          RPiSerial.write(fileObj.read());
+          RPiSerial.print(fileObj.read());
     }
     // I'm done
     RPiSerial.println("<>");

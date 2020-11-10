@@ -3,4 +3,5 @@ frontend/node_modules
 # Built things should not be stored
 **/build
 
+**/.DS_Store
 survivorLibrary/documents
