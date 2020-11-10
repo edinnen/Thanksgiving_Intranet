@@ -26,6 +26,8 @@ func NewConnection() (db *sqlx.DB, mutex *sync.Mutex) {
 	db = sqlx.NewDb(sqlite, "sqlite3")
 
 	enableForeignKeys(db)
+
+	log.Info("Ensuring database tables exist...")
 	ensureReadingsTable(db)
 	ensureUsersTable(db)
 	ensureAnomaliesTable(db)
@@ -44,7 +46,6 @@ func enableForeignKeys(db *sqlx.DB) {
 
 // ensureReadingsTable checks for the readings table. Creates it if necessary.
 func ensureReadingsTable(db *sqlx.DB) {
-	log.Info("Readings table does not exist. Creating...")
 	schema := `CREATE TABLE IF NOT EXISTS readings (
 		timestamp         TIMESTAMP,
 		unix              INTEGER,
@@ -59,7 +60,7 @@ func ensureReadingsTable(db *sqlx.DB) {
 		cabin_temp        FLOAT64,
 		battery_temp      FLOAT64
 		);
-		CREATE INDEX idx_unix_readings
+		CREATE INDEX IF NOT EXISTS idx_unix_readings
 		ON readings (unix);`
 
 	// execute a query on the server
@@ -70,7 +71,6 @@ func ensureReadingsTable(db *sqlx.DB) {
 }
 
 func ensureAnomaliesTable(db *sqlx.DB) {
-	log.Info("Anomalies table does not exist. Creating...")
 	schema := `CREATE TABLE IF NOT EXISTS anomalies (
 		id			  	  INTEGER NOT NULL,
 		name			  TEXT,
@@ -88,8 +88,8 @@ func ensureAnomaliesTable(db *sqlx.DB) {
 		battery_temp      FLOAT64,
 		PRIMARY KEY(id)
 	);
-	CREATE INDEX idx_unix_anomalies ON anomalies (unix);
-	CREATE INDEX idx_name_anomalies ON anomalies (name);`
+	CREATE INDEX IF NOT EXISTS idx_unix_anomalies ON anomalies (unix);
+	CREATE INDEX IF NOT EXISTS idx_name_anomalies ON anomalies (name);`
 
 	_, err := db.Exec(schema)
 	if err != nil {
@@ -98,7 +98,6 @@ func ensureAnomaliesTable(db *sqlx.DB) {
 }
 
 func ensureAnomaliesUsersTable(db *sqlx.DB) {
-	log.Info("Anomalies/Users table does not exist. Creating...")
 	schema := `CREATE TABLE IF NOT EXISTS anomalies_users (
 		user_id    INTEGER,
 		anomaly_id INTEGER,
@@ -106,8 +105,8 @@ func ensureAnomaliesUsersTable(db *sqlx.DB) {
 		FOREIGN KEY (anomaly_id) REFERENCES anomalies(id),
 		UNIQUE(user_id, anomaly_id)
 	);
-	CREATE INDEX idx_user_anomaliesusers ON anomalies_users (user_id);
-	CREATE INDEX idx_anomaly_anomaliesusers ON anomalies_users (anomaly_id);`
+	CREATE INDEX IF NOT EXISTS idx_user_anomaliesusers ON anomalies_users (user_id);
+	CREATE INDEX IF NOT EXISTS idx_anomaly_anomaliesusers ON anomalies_users (anomaly_id);`
 
 	_, err := db.Exec(schema)
 	if err != nil {
@@ -117,7 +116,6 @@ func ensureAnomaliesUsersTable(db *sqlx.DB) {
 
 // ensureUsersTable checks for the users table. Creates it if necessary
 func ensureUsersTable(db *sqlx.DB) {
-	log.Info("Users table does not exist. Creating...")
 	schema := `CREATE TABLE IF NOT EXISTS users (
 		id		 INTEGER PRIMARY KEY,
 		name 	 TEXT,
@@ -125,7 +123,7 @@ func ensureUsersTable(db *sqlx.DB) {
 		password TEXT,
 		type     TEXT
 	);
-	CREATE INDEX idx_email_users ON users (email);`
+	CREATE INDEX IF NOT EXISTS idx_email_users ON users (email);`
 
 	_, err := db.Exec(schema)
 	if err != nil {

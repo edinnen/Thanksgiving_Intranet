@@ -76,7 +76,7 @@ func main() {
 	go statisticsEngine.DetectStreamAnomalies()
 
 	termChan := make(chan os.Signal)
-	signal.Notify(termChan, os.Interrupt, os.Kill, syscall.SIGINT, syscall.SIGTERM)
+	signal.Notify(termChan, os.Interrupt, os.Kill, syscall.SIGINT, syscall.SIGTERM, syscall.SIGKILL)
 	<-termChan
 
 	log.Warn("Shutdown signal received")

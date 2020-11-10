@@ -14,3 +14,6 @@ compile-upload:
 	mkdir -p build
 	GOPATH=~/go/ xgo --targets=linux/arm --dest build /Users/ethan/go/src/github.com/edinnen/Thanksgiving_Intranet/analyzer
 	rsync -z --progress -e "ssh -i ~/.ssh/id_rsa" ./build/analyzer-linux-arm-5 pi@thanksgiving.cabin:~/go/bin/analyzer
+
+upload:
+	rsync -z --progress -e "ssh -i ~/.ssh/id_rsa" ./build/analyzer-linux-arm-5 pi@thanksgiving.cabin:~/go/bin/analyzer
