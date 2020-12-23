@@ -5,3 +5,6 @@ frontend/node_modules
 
 **/.DS_Store
 survivorLibrary/documents
+
+# Damn vim swap files
+*.swp
