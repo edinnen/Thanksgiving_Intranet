@@ -6,15 +6,7 @@ Analog Readings setup and measurment functions
 */
 
 void analog_setup(){
-// Attaches internal ~20kOhm pullup to input. When the 'Big Red Switch'
-// is turned on, this pin is pulled low. No external circuitry is required.
-    pinMode(LOAD_DETECT_PIN, INPUT_PULLUP); 
-    // This pin is used to power the precision voltage source.
-    pinMode(REF_PWR_PIN, OUTPUT);
-    digitalWrite(REF_PWR_PIN, LOW);
-    // the pin used to take calibration reading.
-    pinMode(REF_READ_PIN, INPUT);
-    readReference();
+
     // Onewire bus with temperature sensors
     sensors.begin();
 
@@ -28,35 +20,15 @@ void analog_setup(){
     // calibrate with our values
     LOAD_MONITOR.calibrate(LOAD_SHUNT_R, LOAD_SHUNT_MAX_V, LOAD_BUS_MAX_V, LOAD_MAX_CURRENT);
 
+    SOLAR_MONITOR.begin(); //TODO verify I set this up right
+    SOLAR_MONITOR.configure(INA219::RANGE_16V, INA219::GAIN_1_40MV, INA219::ADC_64SAMP, INA219::ADC_64SAMP, INA219::CONT_SH_BUS);
+    // calibrate with our values
+    SOLAR_MONITOR.calibrate(SOLAR_SHUNT_R, SOLAR_SHUNT_MAX_V, SOLAR_BUS_MAX_V, SOLAR_MAX_CURRENT);
+
     // Now that our sensors are fired up lets check the battery
     estimateBattState();
 }
 
-// Takes a reading off the precision voltage source wired to the arduino
-// Gives a known voltage reference to base anolog reads off.
-void readReference(){
-    float readings = 0;
-
-    digitalWrite(REF_PWR_PIN, HIGH); // Power up the voltage source
-    delay(500); // Let her get warmed up. ;)
-    analogRead(REF_READ_PIN);
-    // Take a few readings and average them 
-    for(int i=0;i<10;i++){
-        readings += (float)analogRead(REF_READ_PIN);
-        delay(5);
-    }
-    readings = readings/10;
-    // voltage reference is at 4.096V. ADC is 10bit so 1024 values
-    VOLT_CALIBRATION = 4.096/readings*1024.0;
-    //VOLT_CALIBRATION = VOLT_CALIBRATION/10;
-    digitalWrite(REF_PWR_PIN, LOW); // turn off the reference to save power
-    /*
-    debug_print("uC Supply Voltage: ");
-    debug_print(VOLT_CALIBRATION);
-    debug_println("V");
-    */
-
-}
 
 // Fetches the voltages and currents from the INA219s and solar voltage divider
 // and outputs to a set of strings
@@ -103,17 +75,6 @@ void readVoltAmp(float Power[]){
     }
     return;
 }
-
-void readSolarVoltage(float* volts){
-    readReference(); // Calibrate against reference
-    analogRead(SOLAR_VOLATGE_PIN); // Prep the ADC
-    delay(1);
-
-    // Take the reading and convert to correct voltage
-   *volts = VOLT_CALIBRATION / 1024.0 * (float)analogRead(SOLAR_VOLATGE_PIN)*SOLAR_VOLT_MULTI;
-   return;
-}
-
 
 void strTemps(char outTemp[], char inTemp[], char boxTemp[]){
     float temps[3];

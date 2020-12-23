@@ -15,8 +15,6 @@ Last Modified: 27 March, 2020
 Good things take time. Be patient.
 */
 
-// Used for communicating with GPS
-#include "TinyGPS.h" //http://arduiniana.org/libraries/TinyGPS/
 // Used for time keeping
 #include "TimeLib.h" //https://github.com/PaulStoffregen/Time
 #include <Wire.h> // Used to talk over I2C for RTC
@@ -33,7 +31,6 @@ Good things take time. Be patient.
 #include <INA219.h> // used to deal with power measurment ICs
 
 // what's the name of the hardware serial ports?
-#define GPSSerial Serial2 
 #define RPiSerial Serial   
 
 // set to 1 for faster write/read frequencies and clock updates.
@@ -66,30 +63,12 @@ printhumanTime();
 #define humanTime()
 #endif
 
-// TODO not needed
-#define FALSE 0
-#define TRUE  1
-
 
 //************************** Time keeping stuff**********************************
-// Our global gps object
-TinyGPS gps;
 // Real Time clock object
 RTC_PCF8523 rtc;
 
-// UNIX time of last GPS fix. Used to determine if we need a new fix
-unsigned long LAST_GPS_FIX = 0;
-unsigned long LAST_GPS_ATTEMPT = 0;
-unsigned long GPS_WOKE_UP_TIME = 0;
-//Track if the gps is asleep
-bool GPS_SLEEP_FLAG = 1;
-// GPS has an enable pin which puts it to sleep. Put low to disable
-byte GPS_EN_PIN = 36;
-// Both sync intervals are in seconds. Interval depends if we are debugging or not
-const unsigned int GPS_SYNC_INTERVAL = DEBUG_SPEEDUP_TIME ? 60*5 : 3600*24*5; // How frequenty to update time with GPS
 const unsigned int RTC_SYNC_INTERVAL = DEBUG_SPEEDUP_TIME ? 10 : 60; // How frequently to update time with RTC
-// max time to leave the GPS awake trying to get a signal. We need to giveup eventually!
-const unsigned int GPS_MAX_AWAKE_TIME = DEBUG_SPEEDUP_TIME ? 120 : 3600; 
 
 // elapsedMillis creates a background timer that constantly counts up. Much better to use these
 // timers than to use a delay. Does not work while asleep so make sure to reset after sleeping
@@ -101,7 +80,7 @@ elapsedMillis ENERGY_TIME_ELAPSED;
 
 // Intervals used between readings/SD writes when loads disconnected
 // We put the arduino to sleep when loads are off so can't use timers.
-// Could use the RTC but counting naps is fine.
+// Could use the RTC but counting naps is fine. //TODO no it's not fine
 int NUM_NAPS_TAKEN = 0; // Number of naps taken during standby mode (loads disconnected). One 'nap' is ~8sec long
 // use 37 naps for about 5min between SD writes, or 150 naps for ~20min. Note: not very accurate 
 const int NUM_NAPS_BETWEEN_SD_WRITES = DEBUG_SPEEDUP_TIME ? 2 : (10*60)/8; 
@@ -111,21 +90,6 @@ const int LOAD_INTERVAL = DEBUG_SPEEDUP_TIME ? 5*1000 : 10*1000; //milliseconds
 const int ENERGY_TIME_INTERVAL = 1000;
 
 //************************** Analog Stuff **********************************
-
-// Using an external voltage reference to increase accuracy. The reference is used to calculate the
-// actual voltage supplied to the arduino (which is used in the ADC).
-// Reference used is the LM4040 with a voltage of 4.096V +/- 1%
-// This is the voltage of the input to the arduino. Nominally 5V (5000mV)
-float VOLT_CALIBRATION = 5.0;
-const byte REF_PWR_PIN = 12; // LM4040 is powered from a pin so it can be powered down when not in use
-const byte REF_READ_PIN = A0;
-
-// Load detect pin detects when the Big Red Switch connects loads. This pulls the negative load bus bar low.
-const byte LOAD_DETECT_PIN = 44;
-const byte SOLAR_VOLATGE_PIN = A10;
-// Solar voltage is measured using a voltage divider circuit
-// Solar: R1=1400, R2=8870, multiplyer is  7.3367. Max voltage allowed on input is then: 36.7V
-const float SOLAR_VOLT_MULTI = 7.3357; 
 
 // Information used to configure the INA219 power measurment ICs
 // At the time of writing, both ICs will use an equivalent shunt with a resistance of 0.001 Ohms. The only difference is the max current rating but I'm pretty sure there is no actual difference.
@@ -143,6 +107,13 @@ INA219 BATT_MONITOR(0x40);
 #define LOAD_SHUNT_R      0.001
 // Create a load monitor object with the I2C address. Solder on A0 = 0x41
 INA219 LOAD_MONITOR(0x41);
+
+#define SOLAR_SHUNT_MAX_V  0.05
+#define SOLAR_BUS_MAX_V    26
+#define SOLAR_MAX_CURRENT  50
+#define SOLAR_SHUNT_R      0.001
+// Create a solar monitor object with the I2C address. Solder on A0 = 0x41
+INA219 SOLAR_MONITOR(0x41);
 
 // Keep track of energy (joules) used/produced
 float ENERGY_GENERATED = 0.0;
@@ -328,7 +299,7 @@ void standby(){
     // Standby is activated when the loads are disconected indicating that the cabin is shut down
 
     // Write to the SD card every 'STANDBY_INTERVAL'
-    if(NUM_NAPS_TAKEN >= NUM_NAPS_BETWEEN_SD_WRITES){
+    if(NUM_NAPS_TAKEN >= NUM_NAPS_BETWEEN_SD_WRITES){//TODO
         //energyUpdate();
         writeReadings();
         NUM_NAPS_TAKEN = 0;
@@ -338,6 +309,7 @@ void standby(){
 }//standby
 
 
+//TODO
 void areLoadsConnected(){
     // Check to see if the loads are connected. Low means they are connected.
     LOAD_ON_FLAG = digitalRead(LOAD_DETECT_PIN) ? 0 : 1;
@@ -350,7 +322,6 @@ void loop() {
     if(LOAD_ON_FLAG == TRUE){ // If the load switch is 'on'
         if(PREV_LOAD_STATE == FALSE){ // If the loads were just attached
             debug_println("Loads were just attached...");
-            setGPStime(); // good time to sync RTC with GPS
             estimateBattState();
             newFile(); 
             ENERGY_TIME_ELAPSED = 0; // Reset the clock used for energy measurments
