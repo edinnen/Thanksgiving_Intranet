@@ -32,12 +32,10 @@ void analog_setup(){
 
 // Fetches the voltages and currents from the INA219s and solar voltage divider
 // and outputs to a set of strings
-void strVoltAmps(char BattVstr[], char SolarVstr[], char BattAstr[], char LoadAstr[]){
-    float Powers[4];
-    float SolarVolt;
+void strVoltAmps(char BattVstr[], char SolarVstr[], char BattAstr[], char LoadAstr[], char SolarAstr[]){
+    float Powers[6];
 
     readVoltAmp(Powers);
-    readSolarVoltage(&SolarVolt);
 
     // Convert the floating point number to a char array stored in the provided variable
     // sprintf doesn't work with floats on arduino. dumb. Have to use this function by AVR
@@ -45,11 +43,14 @@ void strVoltAmps(char BattVstr[], char SolarVstr[], char BattAstr[], char LoadAs
     dtostrf(Powers[0], 4, 2, BattVstr);
     dtostrf(Powers[1], 4, 2, BattAstr);
     dtostrf(Powers[3], 4, 2, LoadAstr);
-    dtostrf(SolarVolt, 4, 2, SolarVstr);
+    dtostrf(Powers[4], 4, 2, SolarVstr);
+    dtostrf(Powers[5], 4, 2, SolarAstr);
     return;
 }
 
-// Reads the voltage and current on both INA219s
+// Reads the voltage and current from the sensors
+// Current is with respect to the battery. 
+// Leaving the battery is negative, charging the battery is positive.
 void readVoltAmp(float Power[]){
     if(BATT_MONITOR.shuntVoltageRaw() == -1){
         // This means we can't talk to the IC. 
@@ -58,21 +59,28 @@ void readVoltAmp(float Power[]){
         Power[1] = 0;
         //debug_println("Battery INA219 not responding");
     }else{
-        // Shit should be good so fetch that data!
         Power[0] = BATT_MONITOR.busVoltage();
         Power[1] = BATT_MONITOR.shuntCurrent();
     }
+
     if(LOAD_MONITOR.shuntVoltageRaw() == -1){
-        // This means we can't talk to the IC. 
-        // Put in some placeholder data
         Power[2] = 0;
         Power[3] = 0;
         //debug_println("Load INA219 not responding");
     }else{
-        // Shit should be good so fetch that data!
         Power[2] = LOAD_MONITOR.busVoltage();
         Power[3] = LOAD_MONITOR.shuntCurrent();
     }
+    
+    if(SOLAR_MONITOR.shuntVoltageRaw() == -1){
+        Power[4] = 0;
+        Power[5] = 0;
+        //debug_println("Solar INA219 not responding");
+    }else{
+        Power[4] = SOLAR_MONITOR.busVoltage();
+        Power[5] = SOLAR_MONITOR.shuntCurrent();
+    }
+
     return;
 }
 
@@ -143,18 +151,20 @@ void strPower(char generated[], char used[], char battPercent[]){
 // Track the power and time elapsed to determine the average power usage 
 // between SD writes
 void energyUpdate(){
-    // TODO it would be nice to track energy differently.
     // Tracking just power and then before we convert it to a string 
     // we divide by time. Less rounding errors
 
-    float Powers[4];
-    // battV, battA, LoadV, LoadA
+    //static unsigned long int PreviousEnergyMillis = millis();
+    //unsigned long int TimeElapsed = (unsigned long)(millis() - PreviousEnergyMillis);
+
+    float Powers[6];
+    // battV, battA, LoadV, LoadA, SolarV, SolarA
     readVoltAmp(Powers);
-    // Energy used is just the power to the loads over time
-    ENERGY_USED += Powers[2]*Powers[3]*float(ENERGY_TIME_ELAPSED)/1000.0;
+    // Energy used is the power to the loads over time
+    ENERGY_USED += Powers[2]*((-1.0)*Powers[3])*(float(ENERGY_TIME_ELAPSED)/1000.0);
     // Energy generated is the power going into the battery plus the power used times time
     ENERGY_GENERATED += Powers[0]*((-1.0)*Powers[1]+Powers[3])*float(ENERGY_TIME_ELAPSED)/1000.0;
-    ENERGY_TIME_ELAPSED = 0; // Reset the timer between readings
+    ENERGY_TIME_ELAPSED = 0;
 
 }// energyUpdate()
 
@@ -166,7 +176,7 @@ void energyUpdate(){
 // This equation is my best guess at the linear fit. Don't trust it
 void estimateBattState(){
 
-    float battery_voltage[4];
+    float battery_voltage[6];
     readVoltAmp(battery_voltage);
     if(battery_voltage[0] < 11.76){
         BATT_ENERGY = 0;

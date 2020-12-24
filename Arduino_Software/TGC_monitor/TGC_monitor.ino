@@ -30,18 +30,21 @@ Good things take time. Be patient.
 #include <DallasTemperature.h> // Used for making temp sensors easier
 #include <INA219.h> // used to deal with power measurment ICs
 
+#define TRUE  1
+#define FALSE 0
+
 // what's the name of the hardware serial ports?
 #define RPiSerial Serial   
-
+ 
 // set to 1 for faster write/read frequencies and clock updates.
 // set to 0 for production numbers
-#define DEBUG_SPEEDUP_TIME 0
+#define DEBUG_SPEEDUP_TIME 1
 
-// Comment out to use actual temperature sensors
-//#define DEBUG_TEMPERATURE
+// Comment out to use actual sensors
+#define DEBUG_SENSORS
 
 // Comment out line to disable RPi Serial communication
-#define RPI_ENABLE 
+//#define RPI_ENABLE 
 
 // Debug macro. If DEBUG is defined, debug functions will be replaced with
 //output to the USB serial. Otherwise they will be skipped.
@@ -66,9 +69,9 @@ printhumanTime();
 
 //************************** Time keeping stuff**********************************
 // Real Time clock object
-RTC_PCF8523 rtc;
+RTC_DS3231 rtc;
 
-const unsigned int RTC_SYNC_INTERVAL = DEBUG_SPEEDUP_TIME ? 10 : 60; // How frequently to update time with RTC
+//const unsigned int RTC_SYNC_INTERVAL = DEBUG_SPEEDUP_TIME ? 10 : 60; // How frequently to update time with RTC
 
 // elapsedMillis creates a background timer that constantly counts up. Much better to use these
 // timers than to use a delay. Does not work while asleep so make sure to reset after sleeping
@@ -78,6 +81,7 @@ elapsedMillis SYSTEM_TIME_ELAPSED;
 // tracking. Not logged to SD card
 elapsedMillis ENERGY_TIME_ELAPSED;
 
+
 // Intervals used between readings/SD writes when loads disconnected
 // We put the arduino to sleep when loads are off so can't use timers.
 // Could use the RTC but counting naps is fine. //TODO no it's not fine
@@ -85,9 +89,12 @@ int NUM_NAPS_TAKEN = 0; // Number of naps taken during standby mode (loads disco
 // use 37 naps for about 5min between SD writes, or 150 naps for ~20min. Note: not very accurate 
 const int NUM_NAPS_BETWEEN_SD_WRITES = DEBUG_SPEEDUP_TIME ? 2 : (10*60)/8; 
 // This interval is used when loads are connected. It is generally higher resolution
-const int LOAD_INTERVAL = DEBUG_SPEEDUP_TIME ? 5*1000 : 10*1000; //milliseconds
+const int HI_RES_LOGGING_INTERVAL = DEBUG_SPEEDUP_TIME ? 5*1000 : 10*1000; //milliseconds
 // Number of seconds between readings used to track power and energy usage
 const int ENERGY_TIME_INTERVAL = 1000;
+
+unsigned long int NEXT_FILE_UNIX = 0;
+const unsigned long int NEW_FILE_INTERVAL = DEBUG_SPEEDUP_TIME ? 6*3600 : 4*7*24*3600; //Seconds between creating new files
 
 //************************** Analog Stuff **********************************
 
@@ -99,21 +106,33 @@ const int ENERGY_TIME_INTERVAL = 1000;
 #define BATT_MAX_CURRENT  100
 #define BATT_SHUNT_R      0.001
 // Create a battery monitor object with the I2C address. No solder jumpers = 0x40
-INA219 BATT_MONITOR(0x40);
+//INA219 BATT_MONITOR(0x40); // Installed
+
 
 #define LOAD_SHUNT_MAX_V  0.05
 #define LOAD_BUS_MAX_V    16
-#define LOAD_MAX_CURRENT  50
+#define LOAD_MAX_CURRENT  10
 #define LOAD_SHUNT_R      0.001
 // Create a load monitor object with the I2C address. Solder on A0 = 0x41
-INA219 LOAD_MONITOR(0x41);
+//INA219 LOAD_MONITOR(0x41); // Installed TODO
 
 #define SOLAR_SHUNT_MAX_V  0.05
 #define SOLAR_BUS_MAX_V    26
-#define SOLAR_MAX_CURRENT  50
+#define SOLAR_MAX_CURRENT  20
 #define SOLAR_SHUNT_R      0.001
-// Create a solar monitor object with the I2C address. Solder on A0 = 0x41
-INA219 SOLAR_MONITOR(0x41);
+// Create a solar monitor object with the I2C address. Solder on A1 = 0x44
+//INA219 SOLAR_MONITOR(0x44);
+
+#ifdef DEBUG_SENSORS
+INA219 BATT_MONITOR(0x44); // debug
+INA219 LOAD_MONITOR(0x40); // Debug
+INA219 SOLAR_MONITOR(0x45); //doesn't exist
+#else
+INA219 BATT_MONITOR(0x40); // Installed
+INA219 LOAD_MONITOR(0x41); // Installed
+INA219 SOLAR_MONITOR(0x44);//TODO
+#endif
+
 
 // Keep track of energy (joules) used/produced
 float ENERGY_GENERATED = 0.0;
@@ -121,7 +140,8 @@ float ENERGY_USED      = 0.0;
 // Battery capacity is 2 batteries with 125Ahr @ 12V. Convert to J
 // 2 * 12 * 125 * 3600
 // 10,800,000 J
-const unsigned long int BATT_TOTAL_CAPACITY =10800000;
+//const unsigned long int BATT_TOTAL_CAPACITY = 10800000;
+#define BATT_TOTAL_CAPACITY 10800000 //TODO does this work?
 // The approximate battery energy
 unsigned long int BATT_ENERGY = 0;
 
@@ -131,7 +151,7 @@ bool LOAD_ON_FLAG = TRUE;
 bool PREV_LOAD_STATE = TRUE;
 //************************** SD Card Stuff **********************************
 
-const byte chipSelect = 10;
+const byte chipSelect = 53;
 // Global variable containing the current filename
 // I had to 'malloc' it to keep it from disapearing. Stupid shit
 char *filename = (char *) malloc(15);
@@ -158,10 +178,10 @@ const int STREAM_DATA_INTERVAL = 5000;
 //************************** Other **********************************
 
 // Flag is set by the watch dog timer (WDT)
-byte WDT_FLAG = FALSE;
+bool WDT_FLAG = FALSE;
 
 // Set up temperature sensors which are on a 'onewire' bus
-#define ONE_WIRE_BUS 34
+#define ONE_WIRE_BUS 8
 OneWire oneWire(ONE_WIRE_BUS);
 DallasTemperature sensors(&oneWire);
 
@@ -170,13 +190,15 @@ DeviceAddress IN_TEMP_ADDR  = {0x28, 0xFF, 0x06, 0xB2, 0x02, 0x17, 0x04, 0xEE};
 // If we are debugging temperature (test bench) we can substitute our test sensor
 // address for the box temperature.
 
-#ifdef DEBUG_TEMPERATURE
+#ifdef DEBUG_SENSORS
 // Test probe address
-DeviceAddress BOX_TEMP_ADDR {0x28, 0x5F, 0x33, 0x92, 0x0B, 0x00, 0x00, 0xF9};
+//DeviceAddress BOX_TEMP_ADDR {0x28, 0x5F, 0x33, 0x92, 0x0B, 0x00, 0x00, 0xF9};
+DeviceAddress BOX_TEMP_ADDR {0x28, 0x8C, 0xCA, 0x68, 0x3A, 0x19, 0x01, 0x2E}; // newer sensor
 #else
 // actual probe address
 DeviceAddress BOX_TEMP_ADDR {0x28, 0xFF, 0x31, 0xAB, 0x31, 0x17, 0x03, 0x29};
 #endif
+
 
 //************************** Begin Functions **********************************
 
@@ -289,8 +311,8 @@ void loadConnected(){
     // Update the energy state every interval
     if(ENERGY_TIME_ELAPSED > ENERGY_TIME_INTERVAL) energyUpdate();
 
-    // Write to the SD card every 'LOAD_INTERVAL'
-    if(SYSTEM_TIME_ELAPSED > LOAD_INTERVAL) writeReadings();
+    // Write to the SD card every 'HI_RES_LOGGING_INTERVAL'
+    if(SYSTEM_TIME_ELAPSED > HI_RES_LOGGING_INTERVAL) writeReadings();
 
 }
 
@@ -309,33 +331,40 @@ void standby(){
 }//standby
 
 
-//TODO
 void areLoadsConnected(){
     // Check to see if the loads are connected. Low means they are connected.
-    LOAD_ON_FLAG = digitalRead(LOAD_DETECT_PIN) ? 0 : 1;
+
+    // Static makes the value persist across multiple function calls
+    static unsigned long int PreviousLoadMillis = millis();
+    const  unsigned long int waitTime = 30*60*1000;
+
+    if(LOAD_MONITOR.shuntCurrent() > 0.5){
+        PreviousLoadMillis = millis();
+        LOAD_ON_FLAG = TRUE;
+    }else if((unsigned long)(millis() - PreviousLoadMillis) >= waitTime){
+        LOAD_ON_FLAG = FALSE;
+    }
 }
 
 void loop() {
 
     areLoadsConnected();
 
-    if(LOAD_ON_FLAG == TRUE){ // If the load switch is 'on'
-        if(PREV_LOAD_STATE == FALSE){ // If the loads were just attached
+    if(LOAD_ON_FLAG == TRUE){ 
+        if(PREV_LOAD_STATE == FALSE){ 
             debug_println("Loads were just attached...");
             estimateBattState();
-            newFile(); 
-            ENERGY_TIME_ELAPSED = 0; // Reset the clock used for energy measurments
-            SYSTEM_TIME_ELAPSED = 0;
+            //ENERGY_TIME_ELAPSED = 0; // Reset the clock used for energy measurments
+            //SYSTEM_TIME_ELAPSED = 0;
             PREV_LOAD_STATE = TRUE; // Reset the previous state flag
         } // if( Loads just attached )
 
         loadConnected();
-    }else{ // if the load is not connected, system is in standby
-        if(PREV_LOAD_STATE == TRUE){ // If the loads were just disconnected
+    }else{ 
+        if(PREV_LOAD_STATE == TRUE){ // If the loads just stopped
             debug_println("Loads just disconnected");
-            newFile(); // Create a new file
     // Set battery ENERGY_LEVEL to a undefined value to indicate it is not being tracked anymore
-            BATT_ENERGY = 1; 
+            //BATT_ENERGY = 1; 
             PREV_LOAD_STATE = FALSE;
         }
         standby();

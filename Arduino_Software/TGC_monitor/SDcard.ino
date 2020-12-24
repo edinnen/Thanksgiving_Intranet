@@ -14,7 +14,6 @@ void SD_setup(){
         debug_println("card initialized.");
     }
 
-    //printRootDir();
 #ifdef DEBUG
     //print out all files on the card
  //   LOG = SD.open("/");
@@ -27,13 +26,13 @@ void SD_setup(){
 
 void generateDataString(char data[]){
     // Take the various measurments and then write them to a char array
-    debug_println("writeReadings");
+    //debug_println("writeReadings");
 
     unsigned long time = now();
 
     // Create buffers to hold the data as a string and pass the variables to the function
-    char BattV[10], SolarV[10], BattA[10], LoadA[10];
-    strVoltAmps(BattV, SolarV, BattA, LoadA);
+    char BattV[10], SolarV[10], BattA[10], LoadA[10], SolarA[10];
+    strVoltAmps(BattV, SolarV, BattA, LoadA, SolarA);
     char outTemp[10], inTemp[10], boxTemp[10];
     strTemps(outTemp, inTemp, boxTemp);
     // The power being generated/used and the percentage of batt left
@@ -41,8 +40,8 @@ void generateDataString(char data[]){
     strPower(generated, used, battPercent);
 
     // Merging and converting the data into one big string, 'data'
-    sprintf(data, "%010lu,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n",
-            time, BattV, SolarV, LoadA, BattA, battPercent, generated, used, outTemp, inTemp, boxTemp);
+    sprintf(data, "%010lu,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n",
+            time, BattV, SolarV, LoadA, BattA, SolarA, battPercent, generated, used, outTemp, inTemp, boxTemp);
 
 }
 
@@ -50,7 +49,10 @@ void writeReadings(){
     //char dataBuff[150]; // Buffer used to output the sweet sweet data TODO set length to be reasonable
     //char *data = dataBuff; // Pointer that points at the data buffer
 
-    char data[150];
+    setRTCtime();
+    if((unsigned long int)now() > NEXT_FILE_UNIX) newFile();
+
+    char data[100];
     generateDataString(data);
 
     // Open the current data file, ouput the data, and close it up again
@@ -62,6 +64,7 @@ void writeReadings(){
 
     // Output the data to the debug serial port
     debug_println(filename);
+    humanTime();
     debug_println(data);
 #ifdef RPI_ENABLE
     //RPiSerial.print("Live data: ");
@@ -81,11 +84,11 @@ void newFile(){
 
     // Filenames are created from the current UNIX time given in hexadecimal due to filename limitations
     // Fat32 limits file names to 8 characters plus a 3 character extension
-    // Extensions are '.on' when the loads are connected. '.off' otherwise
 
     time_t t = now(); // Put the current unix time into variable t
     unsigned long unix = t; // TODO dumb
-    debug_println(unix);
+    debug_println("newFile()");
+    //debug_println(unix);
     char buff[500]; // Create a buffer for the header text
     char *header = buff; // Pointer that points to the buffer
 
@@ -96,17 +99,11 @@ void newFile(){
         "filename is given in hexadecimal representation\n"
         "#Created: %04d-%02d-%02d at %02d:%02d:%02d or %010lu in UNIX time\n"
         "#Timestamp,Battery Voltage (V),Solar Voltage (V),Battery Amps (A),"
-        "Load Amps (A),Battery percentage, Power into Battery (w), Power to loads (w),"
+        "Load Amps (A),Solar Amps (A),Battery percentage, Power into Battery (w), Power to loads (w),"
         "Outside Temp (C),Cabin Temp (C),Battery Temp (C)\n", year(t), month(t), day(t), hour(t), minute(t), second(t), unix);
-    
-    // Create the new filename including the system state
-    if(LOAD_ON_FLAG == TRUE){
-    sprintf(filename, "%8lx.ONN", unix); // format option 'lx' is for a 'long hex'
-    debug_println(filename);
-    }else{
-    sprintf(filename, "%8lx.OFF", unix);
-    debug_println(filename);
-    }
+
+    sprintf(filename, "%8lx.csv", unix); // format option 'lx' is for a 'long hex'
+    //debug_println(filename);
 
     // Make sure any open files are closed
     LOG.close();
@@ -120,12 +117,9 @@ void newFile(){
         newFile();
         return;
         }
-    if (! LOG) {
-        debug_println("couldnt create file");
-    }
 
     if(LOG){
-        debug_println("Opened LOG for writing...");
+        //debug_println("Opened LOG for writing...");
         // Put the header at the top of the file
         LOG.print(header);
         LOG.flush();
@@ -134,10 +128,13 @@ void newFile(){
         LOG.close();
     }else{
         debug_println("unable to open LOG");
+        return;
     }
 
     debug_println("New filename created");
     debug_println(filename);
+    debug_println();
+    NEXT_FILE_UNIX = unix + NEW_FILE_INTERVAL;
 
     return;
 

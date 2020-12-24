@@ -24,19 +24,19 @@ void time_setup(){
        debug_println("Couldn't find your dumb RTC. You suck");
        SYSTEM_HAULT(); // If no RTC, give up on life :(
     }
-    if(!rtc.initialized()){
+    if(rtc.lostPower()){
         // If the RTC has not been initialized time will be Jan 1, 1970. No good.
         // This happens if the battery runs out and power to the arduino is cut
         // RTC will still work fine once we set it with the GPS (todo)
-       debug_println("RTC was not running. Switching to GPS");
+        rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
        //TODO maybe instead just choose a random time?
        // Bad data is maybe better than no data?
-       while(setGPStime() == 1) continue; // Wait until we get accurate time before continuing
     }
     // TimeLib.h provides an automatic way to sync time.
     // The SyncProvider will be set automatically every INTERVAL
     setSyncProvider(setRTCtime); // Handy library for keeping time.
-    setSyncInterval(RTC_SYNC_INTERVAL);
+    setSyncInterval(60);
+    //setRTCtime();
 
 }
 
@@ -45,10 +45,9 @@ time_t setRTCtime(){
 
     // Get the current RTC time
     DateTime dtime = rtc.now();
-    //setTime(dtime.hour(), dtime.minute(), dtime.second(), dtime.day(), dtime.month(), dtime.year());
-    debug_println("setRTCtime: ");
+    //debug_println("setRTCtime: ");
     //debug_println(dtime.unixtime());
-    humanTime();
+    //humanTime(); //only works if DEBUG is enabled
 
     setTime(dtime.unixtime()); // sets system clock from RTC
     return dtime.unixtime();

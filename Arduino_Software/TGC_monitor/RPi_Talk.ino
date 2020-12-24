@@ -6,6 +6,7 @@ Transfering files and live data!
 */
 
 
+#ifdef RPI_ENABLE
 
 void RPi_setup(){
 
@@ -173,3 +174,5 @@ void deleteAllFilesOnSD() {
   // I'm done command
   RPiSerial.println("<>");
 }
+
+#endif //RPI_ENABLE
