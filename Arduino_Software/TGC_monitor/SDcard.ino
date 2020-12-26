@@ -9,24 +9,16 @@ void SD_setup(){
 // see if the card is present and can be initialized:
     if (!SD.begin(chipSelect)) {
         debug_println("Card failed, or not present");
-        // TODO something else here
+        SYSTEM_HAULT();
     }else{
         debug_println("card initialized.");
     }
 
-#ifdef DEBUG
-    //print out all files on the card
- //   LOG = SD.open("/");
- //   printDirectory(LOG, 0);
-#endif
-
-    // create a new file
     newFile();
 }
 
 void generateDataString(char data[]){
     // Take the various measurments and then write them to a char array
-    //debug_println("writeReadings");
 
     unsigned long time = now();
 
@@ -46,8 +38,6 @@ void generateDataString(char data[]){
 }
 
 void writeReadings(){
-    //char dataBuff[150]; // Buffer used to output the sweet sweet data TODO set length to be reasonable
-    //char *data = dataBuff; // Pointer that points at the data buffer
 
     setRTCtime();
     if((unsigned long int)now() > NEXT_FILE_UNIX) newFile();
@@ -59,36 +49,24 @@ void writeReadings(){
     LOG = SD.open(filename, FILE_WRITE); 
     if( !LOG.print(data) ){
         debug_println("Didn't print data");
-        //TODO something else
     }
 
     // Output the data to the debug serial port
     debug_println(filename);
     humanTime();
     debug_println(data);
-#ifdef RPI_ENABLE
-    //RPiSerial.print("Live data: ");
-    //RPiSerial.print(data);
-#endif
     LOG.flush();
     LOG.close();
 
-    // reset the timer used between SD card writes
-    SYSTEM_TIME_ELAPSED = 0;
     return;
 }
 
 void newFile(){
-    // Create a new filename based on the time, close the old file, open a new one
-    // and put a descriptive header at the top of the file
-
     // Filenames are created from the current UNIX time given in hexadecimal due to filename limitations
     // Fat32 limits file names to 8 characters plus a 3 character extension
 
-    time_t t = now(); // Put the current unix time into variable t
-    unsigned long unix = t; // TODO dumb
     debug_println("newFile()");
-    //debug_println(unix);
+    time_t t = now(); 
     char buff[500]; // Create a buffer for the header text
     char *header = buff; // Pointer that points to the buffer
 
@@ -100,10 +78,10 @@ void newFile(){
         "#Created: %04d-%02d-%02d at %02d:%02d:%02d or %010lu in UNIX time\n"
         "#Timestamp,Battery Voltage (V),Solar Voltage (V),Battery Amps (A),"
         "Load Amps (A),Solar Amps (A),Battery percentage, Power into Battery (w), Power to loads (w),"
-        "Outside Temp (C),Cabin Temp (C),Battery Temp (C)\n", year(t), month(t), day(t), hour(t), minute(t), second(t), unix);
+        "Outside Temp (C),Cabin Temp (C),Battery Temp (C)\n", year(t), month(t), day(t), hour(t), minute(t), second(t), t);
 
-    sprintf(filename, "%8lx.csv", unix); // format option 'lx' is for a 'long hex'
-    //debug_println(filename);
+    sprintf(filename, "%8lx.csv", t); // format option 'lx' is for a 'long hex'
+    debug_println(filename);
 
     // Make sure any open files are closed
     LOG.close();
@@ -119,22 +97,18 @@ void newFile(){
         }
 
     if(LOG){
-        //debug_println("Opened LOG for writing...");
-        // Put the header at the top of the file
         LOG.print(header);
         LOG.flush();
-
-        // Close the old file
         LOG.close();
     }else{
         debug_println("unable to open LOG");
         return;
     }
 
-    debug_println("New filename created");
-    debug_println(filename);
+    debug_println("New file sucessfully created");
+    //debug_println(filename);
     debug_println();
-    NEXT_FILE_UNIX = unix + NEW_FILE_INTERVAL;
+    NEXT_FILE_UNIX = t + NEW_FILE_INTERVAL;
 
     return;
 

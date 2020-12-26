@@ -1,10 +1,6 @@
 /*
 Thanksgiving Cabin Power System Monitor
 
-Time related functions. This system uses 3 different clocks to keep time.
-The onboard clock is used for very short time periods, a real time clock is
-used for longer time periods (a few days) and a GPS is used for long term time
-keeping.
 
 I'm using a few different time libraries with very similar time object things
 which are not compatible with each other. time_t and DateTime are not the same!
@@ -19,7 +15,7 @@ void time_setup(){
    
 
     // Now lets setup the real time clock
-    if( !rtc.begin()){// TODO doesn't catch it...
+    if( !rtc.begin()){
         // Check if we can talk to the RTC module
        debug_println("Couldn't find your dumb RTC. You suck");
        SYSTEM_HAULT(); // If no RTC, give up on life :(
@@ -28,15 +24,14 @@ void time_setup(){
         // If the RTC has not been initialized time will be Jan 1, 1970. No good.
         // This happens if the battery runs out and power to the arduino is cut
         // RTC will still work fine once we set it with the GPS (todo)
+        debug_println("RTC Lost power, using code compile time as current time");
         rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
-       //TODO maybe instead just choose a random time?
-       // Bad data is maybe better than no data?
     }
     // TimeLib.h provides an automatic way to sync time.
     // The SyncProvider will be set automatically every INTERVAL
-    setSyncProvider(setRTCtime); // Handy library for keeping time.
-    setSyncInterval(60);
-    //setRTCtime();
+    //setSyncProvider(setRTCtime); // Handy library for keeping time.
+    //setSyncInterval(60);
+    setRTCtime();
 
 }
 
@@ -45,10 +40,6 @@ time_t setRTCtime(){
 
     // Get the current RTC time
     DateTime dtime = rtc.now();
-    //debug_println("setRTCtime: ");
-    //debug_println(dtime.unixtime());
-    //humanTime(); //only works if DEBUG is enabled
-
     setTime(dtime.unixtime()); // sets system clock from RTC
     return dtime.unixtime();
 }

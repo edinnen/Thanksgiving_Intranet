@@ -108,11 +108,12 @@ void readTemps(float temps[]){
 }
 
 
+// Calacualte the power 
 void strPower(char generated[], char used[], char battPercent[]){
 
-    // if the loads are off we aren't tracking these
-    // set them all to zero
-    if(LOAD_ON_FLAG == FALSE){
+    if(LOAD_ON_FLAG == false){
+    // During low res logging we can't accurately calculate these so
+    // set them to zero
         dtostrf( 0.0, 4, 2, used);
         dtostrf( 0.0, 4, 2, generated);
         dtostrf(-1.0, 4, 2, battPercent);
@@ -122,20 +123,17 @@ void strPower(char generated[], char used[], char battPercent[]){
     }
 
     energyUpdate();
-    BATT_ENERGY += ENERGY_GENERATED; // BATT_ENERGY is just the long term sum
 
     // Check to see if the battery energy doesn't make sense
     // Either it is way too low or has wrapped around and is way too big
     if(BATT_ENERGY < BATT_TOTAL_CAPACITY/3 || BATT_ENERGY > BATT_TOTAL_CAPACITY*2){
         BATT_ENERGY = 0;
-
     // If it is just a bit too big then it is (hopefully) fully charged!
     }else if(BATT_ENERGY > BATT_TOTAL_CAPACITY){
         BATT_ENERGY = BATT_TOTAL_CAPACITY;
-        //debug_println("Battery Full!");
     }
 
-    float timeElapsed = float(SYSTEM_TIME_ELAPSED)/1000;
+    float timeElapsed = float(HIRES_LOG_ELAPSED_MILLIS)/1000;
     float fbattPer = float(BATT_ENERGY)/float(BATT_TOTAL_CAPACITY)*100.0;
 
     dtostrf( (ENERGY_USED/timeElapsed)      , 4, 2, used);
@@ -145,25 +143,22 @@ void strPower(char generated[], char used[], char battPercent[]){
     // Reset the energy variables 
     ENERGY_USED = 0.0;
     ENERGY_GENERATED = 0.0;
+    HIRES_LOG_ELAPSED_MILLIS = 0;
 }
 
 
 // Track the power and time elapsed to determine the average power usage 
-// between SD writes
 void energyUpdate(){
-    // Tracking just power and then before we convert it to a string 
-    // we divide by time. Less rounding errors
-
-    //static unsigned long int PreviousEnergyMillis = millis();
-    //unsigned long int TimeElapsed = (unsigned long)(millis() - PreviousEnergyMillis);
-
     float Powers[6];
     // battV, battA, LoadV, LoadA, SolarV, SolarA
     readVoltAmp(Powers);
-    // Energy used is the power to the loads over time
+    // Energy used is the power to the loads times time
     ENERGY_USED += Powers[2]*((-1.0)*Powers[3])*(float(ENERGY_TIME_ELAPSED)/1000.0);
     // Energy generated is the power going into the battery plus the power used times time
-    ENERGY_GENERATED += Powers[0]*((-1.0)*Powers[1]+Powers[3])*float(ENERGY_TIME_ELAPSED)/1000.0;
+    ENERGY_GENERATED += ( (Powers[0]*Powers[1]) + (Powers[2]*((-1.0)*Powers[3])) )*(float(ENERGY_TIME_ELAPSED)/1000.0);
+    // Battery Energy is the long term sum of energy entering (or leaving) the battery
+    BATT_ENERGY += Powers[0]*Powers[1]*(float(ENERGY_TIME_ELAPSED)/1000.0); // BATT_ENERGY is just the long term sum
+    // Reset the timer
     ENERGY_TIME_ELAPSED = 0;
 
 }// energyUpdate()
@@ -174,7 +169,7 @@ void energyUpdate(){
 // on the battery voltage. Its not super accurate
 // I tried to estimate the voltage/capacity relationship from the spec sheet.
 // This equation is my best guess at the linear fit. Don't trust it
-void estimateBattState(){
+void estimateBattState(){ //TODO make this function better
 
     float battery_voltage[6];
     readVoltAmp(battery_voltage);

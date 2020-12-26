@@ -10,7 +10,7 @@ thanks to Stuart Taylor. Hey Stuart!
 
 Created: October, 2017
 First kinda working version: 22 July, 2018
-Last Modified: 27 March, 2020
+Last Modified: 25 Dec, 2020
 
 Good things take time. Be patient.
 */
@@ -30,9 +30,6 @@ Good things take time. Be patient.
 #include <DallasTemperature.h> // Used for making temp sensors easier
 #include <INA219.h> // used to deal with power measurment ICs
 
-#define TRUE  1
-#define FALSE 0
-
 // what's the name of the hardware serial ports?
 #define RPiSerial Serial   
  
@@ -44,11 +41,10 @@ Good things take time. Be patient.
 #define DEBUG_SENSORS
 
 // Comment out line to disable RPi Serial communication
-//#define RPI_ENABLE 
+#define RPI_ENABLE 
 
 // Debug macro. If DEBUG is defined, debug functions will be replaced with
 //output to the USB serial. Otherwise they will be skipped.
-
 #define DEBUG 
 
 #ifdef DEBUG
@@ -71,66 +67,71 @@ printhumanTime();
 // Real Time clock object
 RTC_DS3231 rtc;
 
-//const unsigned int RTC_SYNC_INTERVAL = DEBUG_SPEEDUP_TIME ? 10 : 60; // How frequently to update time with RTC
 
-// elapsedMillis creates a background timer that constantly counts up. Much better to use these
-// timers than to use a delay. Does not work while asleep so make sure to reset after sleeping
-// system interval timer. Used to time SD card writes
-elapsedMillis SYSTEM_TIME_ELAPSED;
-// Energy time is used to decide when to take measurments only used for energy
-// tracking. Not logged to SD card
+// elapsedMillis creates a background timer that constantly counts up.
+// Tracks times between SD writes during hi res logging
+elapsedMillis HIRES_LOG_ELAPSED_MILLIS;
+
+// Tracks time between power readings to calculate energy
 elapsedMillis ENERGY_TIME_ELAPSED;
 
 
 // Intervals used between readings/SD writes when loads disconnected
-// We put the arduino to sleep when loads are off so can't use timers.
-// Could use the RTC but counting naps is fine. //TODO no it's not fine
-int NUM_NAPS_TAKEN = 0; // Number of naps taken during standby mode (loads disconnected). One 'nap' is ~8sec long
-// use 37 naps for about 5min between SD writes, or 150 naps for ~20min. Note: not very accurate 
-const int NUM_NAPS_BETWEEN_SD_WRITES = DEBUG_SPEEDUP_TIME ? 2 : (10*60)/8; 
+//int NUM_NAPS_TAKEN = 0; // Number of naps taken during standby mode (loads disconnected). One 'nap' is ~8sec long
+//const int NUM_NAPS_BETWEEN_SD_WRITES = DEBUG_SPEEDUP_TIME ? 2 : (10*60)/8; 
 // This interval is used when loads are connected. It is generally higher resolution
-const int HI_RES_LOGGING_INTERVAL = DEBUG_SPEEDUP_TIME ? 5*1000 : 10*1000; //milliseconds
-// Number of seconds between readings used to track power and energy usage
-const int ENERGY_TIME_INTERVAL = 1000;
+const unsigned int LOW_RES_LOGGING_INTERVAL   = DEBUG_SPEEDUP_TIME ? 20 : 30*60; //seconds
+const unsigned int HI_RES_LOGGING_INTERVAL    = DEBUG_SPEEDUP_TIME ?  5 : 10*60; //seconds
+const unsigned int LOAD_DEBOUNCE_INTERVAL_SEC = DEBUG_SPEEDUP_TIME ? 60*5 : (3600*24); // Seconds
+const unsigned long int NEW_FILE_INTERVAL     = DEBUG_SPEEDUP_TIME ? 60 : 4*7*24*3600; //Seconds between creating new files
+const int ENERGY_TIME_INTERVAL = 1000; //milliseconds
 
 unsigned long int NEXT_FILE_UNIX = 0;
-const unsigned long int NEW_FILE_INTERVAL = DEBUG_SPEEDUP_TIME ? 6*3600 : 4*7*24*3600; //Seconds between creating new files
 
 //************************** Analog Stuff **********************************
 
 // Information used to configure the INA219 power measurment ICs
-// At the time of writing, both ICs will use an equivalent shunt with a resistance of 0.001 Ohms. The only difference is the max current rating but I'm pretty sure there is no actual difference.
 // Additional configuration is done in the setup function
+
+#ifdef DEBUG_SENSORS
+
 #define BATT_SHUNT_MAX_V  0.1
 #define BATT_BUS_MAX_V    16
-#define BATT_MAX_CURRENT  100
-#define BATT_SHUNT_R      0.001
-// Create a battery monitor object with the I2C address. No solder jumpers = 0x40
-//INA219 BATT_MONITOR(0x40); // Installed
-
+#define BATT_MAX_CURRENT  3.2
+#define BATT_SHUNT_R      0.1
+INA219 BATT_MONITOR(0x40); // debug
 
 #define LOAD_SHUNT_MAX_V  0.05
 #define LOAD_BUS_MAX_V    16
 #define LOAD_MAX_CURRENT  10
 #define LOAD_SHUNT_R      0.001
-// Create a load monitor object with the I2C address. Solder on A0 = 0x41
-//INA219 LOAD_MONITOR(0x41); // Installed TODO
+INA219 LOAD_MONITOR(0x45); // doesn't exist
 
 #define SOLAR_SHUNT_MAX_V  0.05
 #define SOLAR_BUS_MAX_V    26
 #define SOLAR_MAX_CURRENT  20
 #define SOLAR_SHUNT_R      0.001
-// Create a solar monitor object with the I2C address. Solder on A1 = 0x44
-//INA219 SOLAR_MONITOR(0x44);
-
-#ifdef DEBUG_SENSORS
-INA219 BATT_MONITOR(0x44); // debug
-INA219 LOAD_MONITOR(0x40); // Debug
 INA219 SOLAR_MONITOR(0x45); //doesn't exist
+
 #else
+
+#define BATT_SHUNT_MAX_V  0.1
+#define BATT_BUS_MAX_V    16
+#define BATT_MAX_CURRENT  100
+#define BATT_SHUNT_R      0.001
 INA219 BATT_MONITOR(0x40); // Installed
+
+#define LOAD_SHUNT_MAX_V  0.05
+#define LOAD_BUS_MAX_V    16
+#define LOAD_MAX_CURRENT  10
+#define LOAD_SHUNT_R      0.001
 INA219 LOAD_MONITOR(0x41); // Installed
-INA219 SOLAR_MONITOR(0x44);//TODO
+
+#define SOLAR_SHUNT_MAX_V  0.05
+#define SOLAR_BUS_MAX_V    26
+#define SOLAR_MAX_CURRENT  20
+#define SOLAR_SHUNT_R      0.001
+INA219 SOLAR_MONITOR(0x44); // TODO
 #endif
 
 
@@ -141,19 +142,22 @@ float ENERGY_USED      = 0.0;
 // 2 * 12 * 125 * 3600
 // 10,800,000 J
 //const unsigned long int BATT_TOTAL_CAPACITY = 10800000;
-#define BATT_TOTAL_CAPACITY 10800000 //TODO does this work?
+#ifdef DEBUG
+#define BATT_TOTAL_CAPACITY 259200 //Test battery
+#else
+#define BATT_TOTAL_CAPACITY 10800000 
+#endif
 // The approximate battery energy
 unsigned long int BATT_ENERGY = 0;
 
 // Flags for indicating if the load is connected and if the state changed
 // Must both be the same value (true or false) otherwise opens a file twice (TODO)
-bool LOAD_ON_FLAG = TRUE;
-bool PREV_LOAD_STATE = TRUE;
+bool LOAD_ON_FLAG = true;
+bool PREV_LOAD_STATE = true;
 //************************** SD Card Stuff **********************************
 
 const byte chipSelect = 53;
 // Global variable containing the current filename
-// I had to 'malloc' it to keep it from disapearing. Stupid shit
 char *filename = (char *) malloc(15);
 // the logging file
 File LOG;
@@ -178,7 +182,7 @@ const int STREAM_DATA_INTERVAL = 5000;
 //************************** Other **********************************
 
 // Flag is set by the watch dog timer (WDT)
-bool WDT_FLAG = FALSE;
+bool WDT_FLAG = false;
 
 // Set up temperature sensors which are on a 'onewire' bus
 #define ONE_WIRE_BUS 8
@@ -203,6 +207,7 @@ DeviceAddress BOX_TEMP_ADDR {0x28, 0xFF, 0x31, 0xAB, 0x31, 0x17, 0x03, 0x29};
 //************************** Begin Functions **********************************
 
 void setup() {
+
 #ifdef RPI_ENABLE
     RPi_setup();
 #else
@@ -212,14 +217,11 @@ void setup() {
 #endif
 #endif
 
-
    time_setup();
    analog_setup();
    SD_setup();
-   //setWrongTime();
-
    
-    // Watch Dog Timer (WDT) setup
+    // Watch Dog Timer (WDT) setup, used for sleeping
     cli(); //disable interrupts
     wdt_reset();
     // Enter 'Config mode'
@@ -232,27 +234,21 @@ void setup() {
 ISR(WDT_vect){
     // The system is woken up from sleep by the 'watch dog timer' WDT which is an interupt
     // After interupt, the script goes here
-  //wdt_disable();  // disable watchdog
-    WDT_FLAG = TRUE;
+    WDT_FLAG = true;
 }
 
 void SYSTEM_HAULT(){
     // If the system has an error I can't handle, just give up on everything.
     while(1){
      // **Contemplate Mistakes**
-
-    // Setting the 'Sleep Mode Control Register' or SMCR
-    // SMCR = ----010- is Power-Down mode
+#ifdef DEBUG
+     delay(10);
+     debug_println("SYSTEM HAULT");
+     delay(10);
+#endif
     set_sleep_mode(SLEEP_MODE_PWR_DOWN);
-    // Sleep enable: SMCR = -------1
     sleep_enable();
-
-    // Power reduction register 0; shut down ADC PRR0 = -------1
-    // Probably need to research more into power reduction...
-
-    // Now enter sleep mode.
     sleep_mode();
-    // Wakes up here then goes back to start and sleeps more
     }
 }
 
@@ -265,21 +261,10 @@ void sleep(){
     delay(10); // need this delay because we power down right away
 #endif
 
-    // Setting the 'Sleep Mode Control Register' or SMCR
-    // SMCR = ----010- is Power-Down mode
     set_sleep_mode(SLEEP_MODE_PWR_DOWN);
-    // Sleep enable: SMCR = -------1
     sleep_enable();
-
-    // Power reduction register 0; shut down ADC PRR0 = -------1
-    // Probably need to research more into power reduction...
-
-    // Now enter sleep mode.
-    sleep_mode();
-    // The program will continue from here after the WDT timeout
-    // Sleep disable: SMCR = -------0
-    sleep_disable(); // First thing to do is disable sleep.
-    // Re-enable the peripherals.
+    sleep_mode(); // starts the nap
+    sleep_disable(); 
     power_all_enable();
 
 #ifdef DEBUG
@@ -288,10 +273,21 @@ void sleep(){
     debug_println("Finished my nap");
 #endif
 
-    NUM_NAPS_TAKEN++; // We took a nap so update the counter
-} // sleep()
+    setRTCtime();
+} 
 
-void loadConnected(){
+void loadsOnLoop(){
+
+    static unsigned long int previousHiResUnix = now();
+
+    if( (unsigned long)(now() - previousHiResUnix) >= HI_RES_LOGGING_INTERVAL ){
+        previousHiResUnix = now();
+        writeReadings();
+    }
+
+    if(ENERGY_TIME_ELAPSED > ENERGY_TIME_INTERVAL) energyUpdate();
+
+
 
 #ifdef RPI_ENABLE
     // Parse data from RPiSerial
@@ -308,41 +304,32 @@ void loadConnected(){
 
 #endif
 
-    // Update the energy state every interval
-    if(ENERGY_TIME_ELAPSED > ENERGY_TIME_INTERVAL) energyUpdate();
-
-    // Write to the SD card every 'HI_RES_LOGGING_INTERVAL'
-    if(SYSTEM_TIME_ELAPSED > HI_RES_LOGGING_INTERVAL) writeReadings();
-
 }
 
-void standby(){
-    // This function is called each time the arduino wakes up from a nap during 'standby'
-    // Standby is activated when the loads are disconected indicating that the cabin is shut down
+void loadsOffLoop(){
 
-    // Write to the SD card every 'STANDBY_INTERVAL'
-    if(NUM_NAPS_TAKEN >= NUM_NAPS_BETWEEN_SD_WRITES){//TODO
-        //energyUpdate();
+    static unsigned long int previousLowResUnix = now();
+
+    if( (unsigned long)(now() - previousLowResUnix) >= LOW_RES_LOGGING_INTERVAL){
+        previousLowResUnix = now();
         writeReadings();
-        NUM_NAPS_TAKEN = 0;
     }else{
     sleep();
     }
-}//standby
+}
 
 
 void areLoadsConnected(){
     // Check to see if the loads are connected. Low means they are connected.
 
     // Static makes the value persist across multiple function calls
-    static unsigned long int PreviousLoadMillis = millis();
-    const  unsigned long int waitTime = 30*60*1000;
+    static unsigned long int previousHiLowUnix = now();
 
     if(LOAD_MONITOR.shuntCurrent() > 0.5){
-        PreviousLoadMillis = millis();
-        LOAD_ON_FLAG = TRUE;
-    }else if((unsigned long)(millis() - PreviousLoadMillis) >= waitTime){
-        LOAD_ON_FLAG = FALSE;
+        previousHiLowUnix = now();
+        LOAD_ON_FLAG = true;
+    }else if( (unsigned long)(now() - previousHiLowUnix) >= LOAD_DEBOUNCE_INTERVAL_SEC ){
+        LOAD_ON_FLAG = false;
     }
 }
 
@@ -350,27 +337,26 @@ void loop() {
 
     areLoadsConnected();
 
-    if(LOAD_ON_FLAG == TRUE){ 
-        if(PREV_LOAD_STATE == FALSE){ 
+    if(LOAD_ON_FLAG == true){ 
+        if(PREV_LOAD_STATE == false){ 
             debug_println("Loads were just attached...");
+            PREV_LOAD_STATE = true;
+            ENERGY_TIME_ELAPSED = 0;
+            HIRES_LOG_ELAPSED_MILLIS = 0;
             estimateBattState();
-            //ENERGY_TIME_ELAPSED = 0; // Reset the clock used for energy measurments
-            //SYSTEM_TIME_ELAPSED = 0;
-            PREV_LOAD_STATE = TRUE; // Reset the previous state flag
-        } // if( Loads just attached )
-
-        loadConnected();
-    }else{ 
-        if(PREV_LOAD_STATE == TRUE){ // If the loads just stopped
-            debug_println("Loads just disconnected");
-    // Set battery ENERGY_LEVEL to a undefined value to indicate it is not being tracked anymore
-            //BATT_ENERGY = 1; 
-            PREV_LOAD_STATE = FALSE;
         }
-        standby();
+
+        loadsOnLoop();
+
+    }else{ 
+        if(PREV_LOAD_STATE == true){ // If the loads just stopped
+            debug_println("Loads just disconnected");
+            PREV_LOAD_STATE = false;
+        }
+
+        loadsOffLoop();
+
     }
 
-    if(WDT_FLAG == TRUE){
-        WDT_FLAG = FALSE;
-    }
+    WDT_FLAG = false;
 }
