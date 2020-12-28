@@ -35,7 +35,7 @@ Good things take time. Be patient.
  
 // set to 1 for faster write/read frequencies and clock updates.
 // set to 0 for production numbers
-#define DEBUG_SPEEDUP_TIME 1
+#define DEBUG_SPEEDUP_TIME 0
 
 // Comment out to use actual sensors
 #define DEBUG_SENSORS
@@ -45,7 +45,7 @@ Good things take time. Be patient.
 
 // Debug macro. If DEBUG is defined, debug functions will be replaced with
 //output to the USB serial. Otherwise they will be skipped.
-#define DEBUG 
+//#define DEBUG 
 
 #ifdef DEBUG
 #define debug_print(x)   \
@@ -80,26 +80,26 @@ elapsedMillis ENERGY_TIME_ELAPSED;
 //int NUM_NAPS_TAKEN = 0; // Number of naps taken during standby mode (loads disconnected). One 'nap' is ~8sec long
 //const int NUM_NAPS_BETWEEN_SD_WRITES = DEBUG_SPEEDUP_TIME ? 2 : (10*60)/8; 
 // This interval is used when loads are connected. It is generally higher resolution
-const unsigned int LOW_RES_LOGGING_INTERVAL   = DEBUG_SPEEDUP_TIME ? 20 : 30*60; //seconds
-const unsigned int HI_RES_LOGGING_INTERVAL    = DEBUG_SPEEDUP_TIME ?  5 : 10*60; //seconds
-const unsigned int LOAD_DEBOUNCE_INTERVAL_SEC = DEBUG_SPEEDUP_TIME ? 60*5 : (3600*24); // Seconds
-const unsigned long int NEW_FILE_INTERVAL     = DEBUG_SPEEDUP_TIME ? 60 : 4*7*24*3600; //Seconds between creating new files
+const unsigned int LOW_RES_LOGGING_INTERVAL   = DEBUG_SPEEDUP_TIME ?      20 : 30*60; //seconds
+const unsigned int HI_RES_LOGGING_INTERVAL    = DEBUG_SPEEDUP_TIME ?       5 : 10*60; //seconds
+const unsigned int LOAD_DEBOUNCE_INTERVAL_SEC = DEBUG_SPEEDUP_TIME ? 3600*10 : (3600*6); // Seconds
+const unsigned long int NEW_FILE_INTERVAL     = DEBUG_SPEEDUP_TIME ? 3600*6  : 4*7*24*3600; //Seconds between creating new files
 const int ENERGY_TIME_INTERVAL = 1000; //milliseconds
 
 unsigned long int NEXT_FILE_UNIX = 0;
 
-//************************** Analog Stuff **********************************
+//************************** Sensor Stuff **********************************
 
 // Information used to configure the INA219 power measurment ICs
 // Additional configuration is done in the setup function
 
 #ifdef DEBUG_SENSORS
 
-#define BATT_SHUNT_MAX_V  0.1
-#define BATT_BUS_MAX_V    16
-#define BATT_MAX_CURRENT  3.2
-#define BATT_SHUNT_R      0.1
-INA219 BATT_MONITOR(0x40); // debug
+#define BATT_SHUNT_MAX_V  0.05
+#define BATT_BUS_MAX_V    26
+#define BATT_MAX_CURRENT  20
+#define BATT_SHUNT_R      0.001
+INA219 BATT_MONITOR(0x44); // debug
 
 #define LOAD_SHUNT_MAX_V  0.05
 #define LOAD_BUS_MAX_V    16
@@ -134,6 +134,23 @@ INA219 LOAD_MONITOR(0x41); // Installed
 INA219 SOLAR_MONITOR(0x44); // TODO
 #endif
 
+// Set up temperature sensors which are on a 'onewire' bus
+OneWire oneWire(A8);
+DallasTemperature sensors(&oneWire);
+
+DeviceAddress OUT_TEMP_ADDR = {0x28, 0x1E, 0xBF, 0xDC, 0x06, 0x00, 0x00, 0xB4};
+DeviceAddress IN_TEMP_ADDR  = {0x28, 0xFF, 0x06, 0xB2, 0x02, 0x17, 0x04, 0xEE};
+// If we are debugging temperature (test bench) we can substitute our test sensor
+// address for the box temperature.
+
+#ifdef DEBUG_SENSORS
+// Test probe address
+//DeviceAddress BOX_TEMP_ADDR {0x28, 0x5F, 0x33, 0x92, 0x0B, 0x00, 0x00, 0xF9};
+DeviceAddress BOX_TEMP_ADDR {0x28, 0x8C, 0xCA, 0x68, 0x3A, 0x19, 0x01, 0x2E}; // newer sensor
+#else
+// actual probe address
+DeviceAddress BOX_TEMP_ADDR {0x28, 0xFF, 0x31, 0xAB, 0x31, 0x17, 0x03, 0x29};
+#endif
 
 // Keep track of energy (joules) used/produced
 float ENERGY_GENERATED = 0.0;
@@ -143,7 +160,7 @@ float ENERGY_USED      = 0.0;
 // 10,800,000 J
 //const unsigned long int BATT_TOTAL_CAPACITY = 10800000;
 #ifdef DEBUG
-#define BATT_TOTAL_CAPACITY 259200 //Test battery
+#define BATT_TOTAL_CAPACITY 259200 //Test battery is smaller
 #else
 #define BATT_TOTAL_CAPACITY 10800000 
 #endif
@@ -184,24 +201,6 @@ const int STREAM_DATA_INTERVAL = 5000;
 // Flag is set by the watch dog timer (WDT)
 bool WDT_FLAG = false;
 
-// Set up temperature sensors which are on a 'onewire' bus
-#define ONE_WIRE_BUS 8
-OneWire oneWire(ONE_WIRE_BUS);
-DallasTemperature sensors(&oneWire);
-
-DeviceAddress OUT_TEMP_ADDR = {0x28, 0x1E, 0xBF, 0xDC, 0x06, 0x00, 0x00, 0xB4};
-DeviceAddress IN_TEMP_ADDR  = {0x28, 0xFF, 0x06, 0xB2, 0x02, 0x17, 0x04, 0xEE};
-// If we are debugging temperature (test bench) we can substitute our test sensor
-// address for the box temperature.
-
-#ifdef DEBUG_SENSORS
-// Test probe address
-//DeviceAddress BOX_TEMP_ADDR {0x28, 0x5F, 0x33, 0x92, 0x0B, 0x00, 0x00, 0xF9};
-DeviceAddress BOX_TEMP_ADDR {0x28, 0x8C, 0xCA, 0x68, 0x3A, 0x19, 0x01, 0x2E}; // newer sensor
-#else
-// actual probe address
-DeviceAddress BOX_TEMP_ADDR {0x28, 0xFF, 0x31, 0xAB, 0x31, 0x17, 0x03, 0x29};
-#endif
 
 
 //************************** Begin Functions **********************************
@@ -239,13 +238,13 @@ ISR(WDT_vect){
 
 void SYSTEM_HAULT(){
     // If the system has an error I can't handle, just give up on everything.
-    while(1){
-     // **Contemplate Mistakes**
 #ifdef DEBUG
      delay(10);
      debug_println("SYSTEM HAULT");
      delay(10);
 #endif
+    while(1){
+     // **Contemplate Mistakes**
     set_sleep_mode(SLEEP_MODE_PWR_DOWN);
     sleep_enable();
     sleep_mode();
@@ -278,7 +277,7 @@ void sleep(){
 
 void loadsOnLoop(){
 
-    static unsigned long int previousHiResUnix = now();
+    static unsigned long int previousHiResUnix = now() + HI_RES_LOGGING_INTERVAL;
 
     if( (unsigned long)(now() - previousHiResUnix) >= HI_RES_LOGGING_INTERVAL ){
         previousHiResUnix = now();
@@ -308,7 +307,7 @@ void loadsOnLoop(){
 
 void loadsOffLoop(){
 
-    static unsigned long int previousLowResUnix = now();
+    static unsigned long int previousLowResUnix = now() + LOW_RES_LOGGING_INTERVAL;
 
     if( (unsigned long)(now() - previousLowResUnix) >= LOW_RES_LOGGING_INTERVAL){
         previousLowResUnix = now();

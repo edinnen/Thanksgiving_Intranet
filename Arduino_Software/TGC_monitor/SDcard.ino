@@ -70,14 +70,12 @@ void newFile(){
     char buff[500]; // Create a buffer for the header text
     char *header = buff; // Pointer that points to the buffer
 
-    // Create the header using the current time/date data TODO is the equation right?
     sprintf(header,
         "#Thanksgiving Cabin Power System\n"
-        "#Time is in UNIX Time which is the number of seconds since 1970-Jan-01, "
-        "filename is given in hexadecimal representation\n"
+        "#Time is in UNIX Time"
         "#Created: %04d-%02d-%02d at %02d:%02d:%02d or %010lu in UNIX time\n"
-        "#Timestamp,Battery Voltage (V),Solar Voltage (V),Battery Amps (A),"
-        "Load Amps (A),Solar Amps (A),Battery percentage, Power into Battery (w), Power to loads (w),"
+        "#Timestamp,Battery Voltage (V),Solar Voltage (V),Load Amps (A),"
+        "Battery Amps (A),Solar Amps (A),Battery percentage, Power into Battery (w), Power to loads (w),"
         "Outside Temp (C),Cabin Temp (C),Battery Temp (C)\n", year(t), month(t), day(t), hour(t), minute(t), second(t), t);
 
     sprintf(filename, "%8lx.csv", t); // format option 'lx' is for a 'long hex'

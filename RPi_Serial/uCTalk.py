@@ -13,7 +13,7 @@ import os
 import pandas as pd
 
 ser = serial.Serial()
-outputFolder = "output/"
+outputFolder = "rawFiles/"
 uCport = "/dev/ttyACM0"
 
 def search4uC():

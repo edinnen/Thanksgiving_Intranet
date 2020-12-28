@@ -8,3 +8,6 @@ survivorLibrary/documents
 
 # Damn vim swap files
 *.swp
+
+**/rawFiles
+**/processedFiles

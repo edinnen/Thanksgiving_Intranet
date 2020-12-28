@@ -105,7 +105,7 @@ void printFile(){
 
     if (fileObj) {
         while (fileObj.available()) {
-          RPiSerial.print(fileObj.read());
+          RPiSerial.write(fileObj.read());
     }
     // I'm done
     RPiSerial.println("<>");
@@ -141,7 +141,7 @@ void printRootDirectory() {
 void singleLiveData(){
     char data[150];
     generateDataString(data);
-    RPiSerial.print('<');
+    RPiSerial.println('<');
     RPiSerial.print(data);
     RPiSerial.println('>');
 }

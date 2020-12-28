@@ -9,7 +9,7 @@ import pandas as pd
 import time
 import matplotlib.pyplot as plt
 
-uCFilesFolder = "output/"
+uCFilesFolder = "rawFiles/"
 processedFilesFolder = "processedFiles/"
 
 def findAllOutputFiles():
@@ -18,7 +18,7 @@ def findAllOutputFiles():
         hexTime = int(filename.split('.')[0], 16)
         files.append((hexTime, filename))
     files =  sorted(files, key=lambda tup: tup[0])
-    #print(files)
+    print(files)
     return files
 
 def preProcess():
@@ -27,10 +27,11 @@ def preProcess():
 
     listOfFrames = []
     for _ , f in files:
+        print(f)
         try:
             df = pd.read_csv(uCFilesFolder + f, sep=',', comment='#',
                     header=None, dtype=float,
-                    names = ["Unix", "BattV", "SolarV", "BattA", "LoadA",
+                    names = ["Unix", "BattV", "SolarV", "LoadA", "BattA", "SolarA",
                         "BattPercent", "AveBattPower", "AveLoadPower",
                         "OutsideTemp", "CabinTemp", "BattTemp"])
         except (pd.errors.EmptyDataError):
@@ -107,7 +108,7 @@ def concatFiles():
         try:
             df = pd.read_csv(uCFilesFolder + f, sep=',', comment='#',
                     header=None, dtype=float,
-                    names = ["Unix", "BattV", "SolarV", "BattA", "LoadA",
+                    names = ["Unix", "BattV", "SolarV", "LoadA", "BattA", "SolarA",
                         "BattPercent", "AveBattPower", "AveLoadPower",
                         "OutsideTemp", "CabinTemp", "BattTemp"])
         except (pd.errors.EmptyDataError):
@@ -199,8 +200,9 @@ def graphTemperatures(df):
 
 def main():
     Frames = preProcess()
+    print("preProcess done")
     #outputProcessedFiles(Frames)
-    #outputConcatFile(Frames)
+    outputConcatFile(Frames)
     graphTemperatures(concateData(Frames))
 
 try:
