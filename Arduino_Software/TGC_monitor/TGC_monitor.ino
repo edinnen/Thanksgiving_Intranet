@@ -10,7 +10,7 @@ thanks to Stuart Taylor. Hey Stuart!
 
 Created: October, 2017
 First kinda working version: 22 July, 2018
-Last Modified: 25 Dec, 2020
+Last Modified: 28 Dec, 2020
 
 Good things take time. Be patient.
 */
@@ -38,7 +38,7 @@ Good things take time. Be patient.
 #define DEBUG_SPEEDUP_TIME 0
 
 // Comment out to use actual sensors
-#define DEBUG_SENSORS
+//#define DEBUG_SENSORS
 
 // Comment out line to disable RPi Serial communication
 #define RPI_ENABLE 
@@ -80,10 +80,10 @@ elapsedMillis ENERGY_TIME_ELAPSED;
 //int NUM_NAPS_TAKEN = 0; // Number of naps taken during standby mode (loads disconnected). One 'nap' is ~8sec long
 //const int NUM_NAPS_BETWEEN_SD_WRITES = DEBUG_SPEEDUP_TIME ? 2 : (10*60)/8; 
 // This interval is used when loads are connected. It is generally higher resolution
-const unsigned int LOW_RES_LOGGING_INTERVAL   = DEBUG_SPEEDUP_TIME ?      20 : 30*60; //seconds
-const unsigned int HI_RES_LOGGING_INTERVAL    = DEBUG_SPEEDUP_TIME ?       5 : 10*60; //seconds
-const unsigned int LOAD_DEBOUNCE_INTERVAL_SEC = DEBUG_SPEEDUP_TIME ? 3600*10 : (3600*6); // Seconds
-const unsigned long int NEW_FILE_INTERVAL     = DEBUG_SPEEDUP_TIME ? 3600*6  : 4*7*24*3600; //Seconds between creating new files
+const unsigned int LOW_RES_LOGGING_INTERVAL   = DEBUG_SPEEDUP_TIME ?        20 : (30*60); //seconds
+const unsigned int HI_RES_LOGGING_INTERVAL    = DEBUG_SPEEDUP_TIME ?         5 : (10*60); //seconds
+const unsigned int LOAD_DEBOUNCE_INTERVAL_SEC = DEBUG_SPEEDUP_TIME ?  (3600*1) : (3600*6); // Seconds
+const unsigned long int NEW_FILE_INTERVAL     = DEBUG_SPEEDUP_TIME ?  (40) : (2419200); //Seconds between creating new files
 const int ENERGY_TIME_INTERVAL = 1000; //milliseconds
 
 unsigned long int NEXT_FILE_UNIX = 0;
@@ -279,7 +279,7 @@ void loadsOnLoop(){
 
     static unsigned long int previousHiResUnix = now() + HI_RES_LOGGING_INTERVAL;
 
-    if( (unsigned long)(now() - previousHiResUnix) >= HI_RES_LOGGING_INTERVAL ){
+    if( (unsigned long)(now() - previousHiResUnix) > HI_RES_LOGGING_INTERVAL ){
         previousHiResUnix = now();
         writeReadings();
     }
@@ -307,9 +307,9 @@ void loadsOnLoop(){
 
 void loadsOffLoop(){
 
-    static unsigned long int previousLowResUnix = now() + LOW_RES_LOGGING_INTERVAL;
+    static unsigned long int previousLowResUnix = now();
 
-    if( (unsigned long)(now() - previousLowResUnix) >= LOW_RES_LOGGING_INTERVAL){
+    if( (unsigned long)(now() - previousLowResUnix) > LOW_RES_LOGGING_INTERVAL){
         previousLowResUnix = now();
         writeReadings();
     }else{

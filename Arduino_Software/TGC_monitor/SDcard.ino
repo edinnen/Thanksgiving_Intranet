@@ -12,9 +12,8 @@ void SD_setup(){
         SYSTEM_HAULT();
     }else{
         debug_println("card initialized.");
+        //newFile();
     }
-
-    newFile();
 }
 
 void generateDataString(char data[]){
@@ -39,8 +38,13 @@ void generateDataString(char data[]){
 
 void writeReadings(){
 
+    static unsigned long int previousFileUnix = 0;
+
     setRTCtime();
-    if((unsigned long int)now() > NEXT_FILE_UNIX) newFile();
+    if( (unsigned long) (now() - previousFileUnix) > NEW_FILE_INTERVAL ){
+        previousFileUnix = now();
+        newFile();
+    }
 
     char data[100];
     generateDataString(data);
@@ -107,6 +111,7 @@ void newFile(){
     //debug_println(filename);
     debug_println();
     NEXT_FILE_UNIX = t + NEW_FILE_INTERVAL;
+    //debug_println(NEW_FILE_INTERVAL);
 
     return;
 
