@@ -32,7 +32,7 @@ void analog_setup(){
 
 // Fetches the voltages and currents from the INA219s and solar voltage divider
 // and outputs to a set of strings
-void strVoltAmps(char BattVstr[], char SolarVstr[], char BattAstr[], char LoadAstr[], char SolarAstr[]){
+void strVoltAmps(char BattVstr[], char SolarVstr[], char LoadAstr[], char BattAstr[], char SolarAstr[]){
     float Powers[6];
 
     readVoltAmp(Powers);
@@ -60,7 +60,7 @@ void readVoltAmp(float Power[]){
         //debug_println("Battery INA219 not responding");
     }else{
         Power[0] = BATT_MONITOR.busVoltage();
-        Power[1] = BATT_MONITOR.shuntCurrent();
+        Power[1] = (-1.0)*BATT_MONITOR.shuntCurrent();
     }
 
     if(LOAD_MONITOR.shuntVoltageRaw() == -1){
@@ -69,7 +69,7 @@ void readVoltAmp(float Power[]){
         //debug_println("Load INA219 not responding");
     }else{
         Power[2] = LOAD_MONITOR.busVoltage();
-        Power[3] = LOAD_MONITOR.shuntCurrent();
+        Power[3] = (-1.0)*LOAD_MONITOR.shuntCurrent();
     }
     
     if(SOLAR_MONITOR.shuntVoltageRaw() == -1){
@@ -133,7 +133,7 @@ void strPower(char generated[], char used[], char battPercent[]){
         BATT_ENERGY = BATT_TOTAL_CAPACITY;
     }
 
-    float timeElapsed = float(HIRES_LOG_ELAPSED_MILLIS)/1000;
+    float timeElapsed = float(HIRES_LOG_ELAPSED_MILLIS)/1000.0;
     float fbattPer = float(BATT_ENERGY)/float(BATT_TOTAL_CAPACITY)*100.0;
 
     dtostrf( (ENERGY_USED/timeElapsed)      , 4, 2, used);

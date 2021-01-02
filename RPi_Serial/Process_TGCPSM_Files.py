@@ -31,7 +31,7 @@ def preProcess():
         try:
             df = pd.read_csv(uCFilesFolder + f, sep=',', comment='#',
                     header=None, dtype=float,
-                    names = ["Unix", "BattV", "SolarV", "LoadA", "BattA", "SolarA",
+                    names = ["Unix", "BattV", "SolarV", "BattA", "LoadA",
                         "BattPercent", "AveBattPower", "AveLoadPower",
                         "OutsideTemp", "CabinTemp", "BattTemp"])
         except (pd.errors.EmptyDataError):
@@ -198,12 +198,23 @@ def graphTemperatures(df):
    df.plot(kind='line', x='dateTime', y='OutsideTemp', ax=ax)
    plt.show()
 
+def graphBatt(df):
+
+   #df.plot(kind='scatter', x='dateTime', y='BattTemp')
+
+   ax = plt.gca()
+   df.plot(kind='line', x='dateTime', y='BattV',    ax=ax)
+   df.plot(kind='line', x='dateTime', y='LoadA',   ax=ax)
+   df.plot(kind='line', x='dateTime', y='BattA', ax=ax)
+   plt.show()
+
 def main():
     Frames = preProcess()
     print("preProcess done")
     #outputProcessedFiles(Frames)
     outputConcatFile(Frames)
     graphTemperatures(concateData(Frames))
+    graphBatt(concateData(Frames))
 
 try:
     main()

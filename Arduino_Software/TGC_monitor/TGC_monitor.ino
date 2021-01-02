@@ -86,7 +86,7 @@ const unsigned int LOAD_DEBOUNCE_INTERVAL_SEC = DEBUG_SPEEDUP_TIME ?  (3600*1) :
 const unsigned long int NEW_FILE_INTERVAL     = DEBUG_SPEEDUP_TIME ?  (40) : (2419200); //Seconds between creating new files
 const int ENERGY_TIME_INTERVAL = 1000; //milliseconds
 
-unsigned long int NEXT_FILE_UNIX = 0;
+unsigned long int NEXT_FILE_UNIX = 0; //TODO delete
 
 //************************** Sensor Stuff **********************************
 
