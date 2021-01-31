@@ -27,12 +27,56 @@ void generateDataString(char data[]){
     char outTemp[10], inTemp[10], boxTemp[10];
     strTemps(outTemp, inTemp, boxTemp);
     // The power being generated/used and the percentage of batt left
-    char generated[10], used[10], battPercent[10];
-    strPower(generated, used, battPercent);
+    char solarPWR[10], hydroPWR[10], loadPWR[10];
+    strPower(solarPWR, hydroPWR, loadPWR);
 
     // Merging and converting the data into one big string, 'data'
     sprintf(data, "%010lu,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n",
-            time, BattV, SolarV, LoadA, BattA, SolarA, battPercent, generated, used, outTemp, inTemp, boxTemp);
+            time, BattV, SolarV, LoadA, BattA, SolarA, loadPWR, solarPWR, hydroPWR, outTemp, inTemp, boxTemp);
+
+#ifdef DEBUG
+    // Output the data to the debug serial port
+    Serial.print("----------------------------------------------------------\n");
+    Serial.print("Current Filename: ");
+    Serial.println(filename);
+    humanTime();
+    Serial.print("BattV: ");
+    Serial.print( BattV);
+    Serial.print("\t");
+    Serial.print("SolarV: ");
+    Serial.print( SolarV);
+    Serial.print("\n");
+    Serial.print("LoadA: ");
+    Serial.print( LoadA);
+    Serial.print("\t");
+    Serial.print(" BattA: ");
+    Serial.print( BattA);
+    Serial.print("\t");
+    Serial.print("SolarA: ");
+    Serial.print( SolarA);
+    Serial.print("\n");
+    Serial.print("loadPWR: ");
+    Serial.print( loadPWR);
+    Serial.print("\t");
+    Serial.print("solarPWR: ");
+    Serial.print( solarPWR);
+    Serial.print("\t");
+    Serial.print("hydroPWR: ");
+    Serial.print( hydroPWR);
+    Serial.print("\n");
+    Serial.print("outTemp: ");
+    Serial.print( outTemp);
+    Serial.print("\t");
+    Serial.print("inTemp: ");
+    Serial.print( inTemp);
+    Serial.print("\t");
+    Serial.print("boxTemp: ");
+    Serial.print( boxTemp);
+    Serial.print("\n----------------------------------------------------------");
+    Serial.print("\n\n\n");
+    LOG.flush();
+    LOG.close();
+#endif
 
 }
 
@@ -55,12 +99,14 @@ void writeReadings(){
         debug_println("Didn't print data");
     }
 
+    /*
     // Output the data to the debug serial port
     debug_println(filename);
     humanTime();
     debug_println(data);
     LOG.flush();
     LOG.close();
+    */
 
     return;
 }
@@ -79,7 +125,7 @@ void newFile(){
         "#Time is in UNIX Time"
         "#Created: %04d-%02d-%02d at %02d:%02d:%02d or %010lu in UNIX time\n"
         "#Timestamp,Battery Voltage (V),Solar Voltage (V),Load Amps (A),"
-        "Battery Amps (A),Solar Amps (A),Battery percentage, Power into Battery (w), Power to loads (w),"
+        "Battery Amps (A),Solar Amps (A),load Power (w),solar Power (w),hydro Power (w),"
         "Outside Temp (C),Cabin Temp (C),Battery Temp (C)\n", year(t), month(t), day(t), hour(t), minute(t), second(t), t);
 
     sprintf(filename, "%8lx.csv", t); // format option 'lx' is for a 'long hex'
