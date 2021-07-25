@@ -35,7 +35,7 @@ Good things take time. Be patient.
  
 // set to 1 for faster write/read frequencies and clock updates.
 // set to 0 for production numbers
-#define DEBUG_SPEEDUP_TIME 1
+#define DEBUG_SPEEDUP_TIME 0
 
 // Comment out to use actual sensors
 #define DEBUG_SENSORS
@@ -82,7 +82,7 @@ elapsedMillis ENERGY_TIME_ELAPSED;
 // This interval is used when loads are connected. It is generally higher resolution
 const unsigned int LOW_RES_LOGGING_INTERVAL   = DEBUG_SPEEDUP_TIME ?        20 : (30*60); //seconds
 const unsigned int HI_RES_LOGGING_INTERVAL    = DEBUG_SPEEDUP_TIME ?         5 : (10*60); //seconds
-const unsigned int LOAD_DEBOUNCE_INTERVAL_SEC = DEBUG_SPEEDUP_TIME ?  (3600*1) : (3600*6); // Seconds
+const unsigned int LOAD_DEBOUNCE_INTERVAL_SEC = DEBUG_SPEEDUP_TIME ?  (60*1) : (3600*6); // Seconds
 const unsigned long int NEW_FILE_INTERVAL     = DEBUG_SPEEDUP_TIME ?  (36000) : (2419200); //Seconds between creating new files
 const int ENERGY_TIME_INTERVAL = 1000; //milliseconds
 
@@ -102,7 +102,7 @@ unsigned long int NEXT_FILE_UNIX = 0; //TODO delete
 
 #ifdef DEBUG_SENSORS
 
-#define BATT_SHUNT_MAX_V  0.05
+#define BATT_SHUNT_MAX_V  0.04
 #define BATT_BUS_MAX_V    26
 #define BATT_MAX_CURRENT  20
 #define BATT_SHUNT_R      0.001
@@ -114,29 +114,30 @@ INA219 BATT_MONITOR(0x41);
 #define LOAD_SHUNT_R      0.1
 INA219 LOAD_MONITOR(0x40); 
 
-#define SOLAR_SHUNT_MAX_V  0.05
-#define SOLAR_BUS_MAX_V    26
+#define SOLAR_SHUNT_MAX_V  0.04
+#define SOLAR_BUS_MAX_V    32
 #define SOLAR_MAX_CURRENT  20
 #define SOLAR_SHUNT_R      0.001
 INA219 SOLAR_MONITOR(0x45); 
 
 #else
+// Values used for Cabin sensors
 
-#define BATT_SHUNT_MAX_V  0.1
+#define BATT_SHUNT_MAX_V  0.04
 #define BATT_BUS_MAX_V    16
 #define BATT_MAX_CURRENT  100
 #define BATT_SHUNT_R      0.001
 INA219 BATT_MONITOR(0x41); // Installed
 
-#define LOAD_SHUNT_MAX_V  0.05
+#define LOAD_SHUNT_MAX_V  0.030 //30 amps * .001 ohms
 #define LOAD_BUS_MAX_V    16
-#define LOAD_MAX_CURRENT  10
+#define LOAD_MAX_CURRENT  30
 #define LOAD_SHUNT_R      0.001
 INA219 LOAD_MONITOR(0x40); // Installed
 
-#define SOLAR_SHUNT_MAX_V  0.05
-#define SOLAR_BUS_MAX_V    26
-#define SOLAR_MAX_CURRENT  20
+#define SOLAR_SHUNT_MAX_V  0.01 // ~8.9 amps * .001 ohms
+#define SOLAR_BUS_MAX_V    26 // Solar panel maxV is 21.2V
+#define SOLAR_MAX_CURRENT  9
 #define SOLAR_SHUNT_R      0.001
 INA219 SOLAR_MONITOR(0x45); // TODO
 #endif
@@ -287,6 +288,7 @@ void sleep(){
 
 void loadsOnLoop(){
 
+    // Evaluated first time this runs but then the variable is maintained between calls
     static unsigned long int previousHiResUnix = now() + HI_RES_LOGGING_INTERVAL;
 
     if( (unsigned long)(now() - previousHiResUnix) > HI_RES_LOGGING_INTERVAL ){

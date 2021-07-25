@@ -21,9 +21,17 @@ void analog_setup(){
     LOAD_MONITOR.calibrate(LOAD_SHUNT_R, LOAD_SHUNT_MAX_V, LOAD_BUS_MAX_V, LOAD_MAX_CURRENT);
 
     SOLAR_MONITOR.begin(); //TODO verify I set this up right
-    SOLAR_MONITOR.configure(INA219::RANGE_16V, INA219::GAIN_1_40MV, INA219::ADC_64SAMP, INA219::ADC_64SAMP, INA219::CONT_SH_BUS);
+    SOLAR_MONITOR.configure(INA219::RANGE_32V, INA219::GAIN_1_40MV, INA219::ADC_64SAMP, INA219::ADC_64SAMP, INA219::CONT_SH_BUS);
     // calibrate with our values
     SOLAR_MONITOR.calibrate(SOLAR_SHUNT_R, SOLAR_SHUNT_MAX_V, SOLAR_BUS_MAX_V, SOLAR_MAX_CURRENT);
+
+#ifdef DEBUG_SENSORS
+
+    BATT_MONITOR.configure(INA219::RANGE_16V, INA219::GAIN_1_40MV, INA219::ADC_64SAMP, INA219::ADC_64SAMP, INA219::CONT_SH_BUS);
+    LOAD_MONITOR.configure(INA219::RANGE_16V, INA219::GAIN_8_320MV, INA219::ADC_64SAMP, INA219::ADC_64SAMP, INA219::CONT_SH_BUS);
+    SOLAR_MONITOR.configure(INA219::RANGE_32V, INA219::GAIN_1_40MV, INA219::ADC_64SAMP, INA219::ADC_64SAMP, INA219::CONT_SH_BUS);
+
+#endif
 
     // Now that our sensors are fired up lets check the battery
     estimateBattState();
@@ -80,6 +88,15 @@ void readVoltAmp(float Power[]){
         Power[4] = SOLAR_MONITOR.busVoltage();
         Power[5] = SOLAR_MONITOR.shuntCurrent();
     }
+
+#ifdef DEBUG
+// Doesn't work. //TODO
+    //if(BATT_MONITOR.overflow()) debug_println("Battery shunt overflow");
+    //if(LOAD_MONITOR.overflow()) debug_println("Load shunt overflow");
+    //if(SOLAR_MONITOR.overflow()) debug_println("Solar shunt overflow");
+
+#endif
+
 
     return;
 }

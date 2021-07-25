@@ -72,6 +72,9 @@ void generateDataString(char data[]){
     Serial.print("\t");
     Serial.print("boxTemp: ");
     Serial.print( boxTemp);
+    Serial.print("\n");
+    Serial.print("Loads Connected: ");
+    Serial.print( LOAD_ON_FLAG ? "TRUE" : "FALSE");
     Serial.print("\n----------------------------------------------------------");
     Serial.print("\n\n\n");
     LOG.flush();
@@ -98,15 +101,6 @@ void writeReadings(){
     if( !LOG.print(data) ){
         debug_println("Didn't print data");
     }
-
-    /*
-    // Output the data to the debug serial port
-    debug_println(filename);
-    humanTime();
-    debug_println(data);
-    LOG.flush();
-    LOG.close();
-    */
 
     return;
 }
