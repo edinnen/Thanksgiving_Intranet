@@ -45,7 +45,7 @@ Good things take time. Be patient.
 
 // Debug macro. If DEBUG is defined, debug functions will be replaced with
 //output to the USB serial. Otherwise they will be skipped.
-//#define DEBUG 
+#define DEBUG 
 
 #ifdef DEBUG
 #define debug_print(x)   \

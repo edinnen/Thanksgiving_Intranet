@@ -211,7 +211,7 @@ def graphBatt(df):
 def main():
     Frames = preProcess()
     print("preProcess done")
-    #outputProcessedFiles(Frames)
+    outputProcessedFiles(Frames)
     outputConcatFile(Frames)
     graphTemperatures(concateData(Frames))
     graphBatt(concateData(Frames))
