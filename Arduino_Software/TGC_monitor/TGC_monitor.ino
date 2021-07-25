@@ -93,25 +93,32 @@ unsigned long int NEXT_FILE_UNIX = 0; //TODO delete
 // Information used to configure the INA219 power measurment ICs
 // Additional configuration is done in the setup function
 
+
+//Address 0x40 = no jumpers
+//Address 0x41 = jumper A0
+//Address 0x44 = jumper A1
+//Address 0x45 = jumper A0 & A1
+
+
 #ifdef DEBUG_SENSORS
 
 #define BATT_SHUNT_MAX_V  0.05
 #define BATT_BUS_MAX_V    26
 #define BATT_MAX_CURRENT  20
 #define BATT_SHUNT_R      0.001
-INA219 BATT_MONITOR(0x40);
+INA219 BATT_MONITOR(0x41);
 
 #define LOAD_SHUNT_MAX_V  0.32
 #define LOAD_BUS_MAX_V    16
 #define LOAD_MAX_CURRENT  3.2
 #define LOAD_SHUNT_R      0.1
-INA219 LOAD_MONITOR(0x44); 
+INA219 LOAD_MONITOR(0x40); 
 
 #define SOLAR_SHUNT_MAX_V  0.05
 #define SOLAR_BUS_MAX_V    26
 #define SOLAR_MAX_CURRENT  20
 #define SOLAR_SHUNT_R      0.001
-INA219 SOLAR_MONITOR(0x41); 
+INA219 SOLAR_MONITOR(0x45); 
 
 #else
 
@@ -119,19 +126,19 @@ INA219 SOLAR_MONITOR(0x41);
 #define BATT_BUS_MAX_V    16
 #define BATT_MAX_CURRENT  100
 #define BATT_SHUNT_R      0.001
-INA219 BATT_MONITOR(0x40); // Installed
+INA219 BATT_MONITOR(0x41); // Installed
 
 #define LOAD_SHUNT_MAX_V  0.05
 #define LOAD_BUS_MAX_V    16
 #define LOAD_MAX_CURRENT  10
 #define LOAD_SHUNT_R      0.001
-INA219 LOAD_MONITOR(0x41); // Installed
+INA219 LOAD_MONITOR(0x40); // Installed
 
 #define SOLAR_SHUNT_MAX_V  0.05
 #define SOLAR_BUS_MAX_V    26
 #define SOLAR_MAX_CURRENT  20
 #define SOLAR_SHUNT_R      0.001
-INA219 SOLAR_MONITOR(0x44); // TODO
+INA219 SOLAR_MONITOR(0x45); // TODO
 #endif
 
 // Set up temperature sensors which are on a 'onewire' bus

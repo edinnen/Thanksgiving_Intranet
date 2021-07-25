@@ -23,7 +23,7 @@ void generateDataString(char data[]){
 
     // Create buffers to hold the data as a string and pass the variables to the function
     char BattV[10], SolarV[10], BattA[10], LoadA[10], SolarA[10];
-    strVoltAmps(BattV, SolarV, BattA, LoadA, SolarA);
+    strVoltAmps(BattV, SolarV, LoadA, BattA, SolarA);
     char outTemp[10], inTemp[10], boxTemp[10];
     strTemps(outTemp, inTemp, boxTemp);
     // The power being generated/used and the percentage of batt left
