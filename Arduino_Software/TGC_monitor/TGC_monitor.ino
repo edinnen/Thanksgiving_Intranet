@@ -35,10 +35,10 @@ Good things take time. Be patient.
  
 // set to 1 for faster write/read frequencies and clock updates.
 // set to 0 for production numbers
-#define DEBUG_SPEEDUP_TIME 0
+#define DEBUG_SPEEDUP_TIME 1
 
 // Comment out to use actual sensors
-//#define DEBUG_SENSORS
+#define DEBUG_SENSORS
 
 // Comment out line to disable RPi Serial communication
 #define RPI_ENABLE 
@@ -83,7 +83,7 @@ elapsedMillis ENERGY_TIME_ELAPSED;
 const unsigned int LOW_RES_LOGGING_INTERVAL   = DEBUG_SPEEDUP_TIME ?        20 : (30*60); //seconds
 const unsigned int HI_RES_LOGGING_INTERVAL    = DEBUG_SPEEDUP_TIME ?         5 : (10*60); //seconds
 const unsigned int LOAD_DEBOUNCE_INTERVAL_SEC = DEBUG_SPEEDUP_TIME ?  (3600*1) : (3600*6); // Seconds
-const unsigned long int NEW_FILE_INTERVAL     = DEBUG_SPEEDUP_TIME ?  (40) : (2419200); //Seconds between creating new files
+const unsigned long int NEW_FILE_INTERVAL     = DEBUG_SPEEDUP_TIME ?  (36000) : (2419200); //Seconds between creating new files
 const int ENERGY_TIME_INTERVAL = 1000; //milliseconds
 
 unsigned long int NEXT_FILE_UNIX = 0; //TODO delete
@@ -99,19 +99,19 @@ unsigned long int NEXT_FILE_UNIX = 0; //TODO delete
 #define BATT_BUS_MAX_V    26
 #define BATT_MAX_CURRENT  20
 #define BATT_SHUNT_R      0.001
-INA219 BATT_MONITOR(0x44); // debug
+INA219 BATT_MONITOR(0x40);
 
-#define LOAD_SHUNT_MAX_V  0.05
+#define LOAD_SHUNT_MAX_V  0.32
 #define LOAD_BUS_MAX_V    16
-#define LOAD_MAX_CURRENT  10
-#define LOAD_SHUNT_R      0.001
-INA219 LOAD_MONITOR(0x45); // doesn't exist
+#define LOAD_MAX_CURRENT  3.2
+#define LOAD_SHUNT_R      0.1
+INA219 LOAD_MONITOR(0x44); 
 
 #define SOLAR_SHUNT_MAX_V  0.05
 #define SOLAR_BUS_MAX_V    26
 #define SOLAR_MAX_CURRENT  20
 #define SOLAR_SHUNT_R      0.001
-INA219 SOLAR_MONITOR(0x45); //doesn't exist
+INA219 SOLAR_MONITOR(0x41); 
 
 #else
 
@@ -139,22 +139,25 @@ OneWire oneWire(A8);
 DallasTemperature sensors(&oneWire);
 
 DeviceAddress OUT_TEMP_ADDR = {0x28, 0x1E, 0xBF, 0xDC, 0x06, 0x00, 0x00, 0xB4};
-DeviceAddress IN_TEMP_ADDR  = {0x28, 0xFF, 0x06, 0xB2, 0x02, 0x17, 0x04, 0xEE};
 // If we are debugging temperature (test bench) we can substitute our test sensor
 // address for the box temperature.
 
 #ifdef DEBUG_SENSORS
 // Test probe address
-//DeviceAddress BOX_TEMP_ADDR {0x28, 0x5F, 0x33, 0x92, 0x0B, 0x00, 0x00, 0xF9};
-DeviceAddress BOX_TEMP_ADDR {0x28, 0x8C, 0xCA, 0x68, 0x3A, 0x19, 0x01, 0x2E}; // newer sensor
+//DeviceAddress IN_TEMP_ADDR  = {0x28, 0x5F, 0x33, 0x92, 0x0B, 0x00, 0x00, 0xF9};
+DeviceAddress IN_TEMP_ADDR  = {0x28, 0xF9, 0x57, 0x7B, 0x4F, 0x20, 0x01, 0xF3};
+DeviceAddress BOX_TEMP_ADDR = {0x28, 0x8C, 0xCA, 0x68, 0x3A, 0x19, 0x01, 0x2E};
 #else
 // actual probe address
-DeviceAddress BOX_TEMP_ADDR {0x28, 0xFF, 0x31, 0xAB, 0x31, 0x17, 0x03, 0x29};
+DeviceAddress IN_TEMP_ADDR  = {0x28, 0xFF, 0x06, 0xB2, 0x02, 0x17, 0x04, 0xEE};
+DeviceAddress BOX_TEMP_ADDR = {0x28, 0xFF, 0x31, 0xAB, 0x31, 0x17, 0x03, 0x29};
 #endif
 
 // Keep track of energy (joules) used/produced
-float ENERGY_GENERATED = 0.0;
+float ENERGY_SOLAR = 0.0;
+float ENERGY_HYDRO = 0.0;
 float ENERGY_USED      = 0.0;
+//float ENERGY_GENERATED = 0.0;
 // Battery capacity is 2 batteries with 125Ahr @ 12V. Convert to J
 // 2 * 12 * 125 * 3600
 // 10,800,000 J
@@ -342,7 +345,7 @@ void loop() {
             PREV_LOAD_STATE = true;
             ENERGY_TIME_ELAPSED = 0;
             HIRES_LOG_ELAPSED_MILLIS = 0;
-            estimateBattState();
+            //estimateBattState();
         }
 
         loadsOnLoop();
