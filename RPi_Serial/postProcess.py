@@ -13,7 +13,7 @@ def plotStuff():
     #y1 = df.CabinTemp
     #plt.figure()
     ax = plt.gca()
-    df.plot(kind='line', x='dateTime', y='BattTemp', ax=ax)
+    df.plot(kind='line', x='dateTime', y='BoxTemp', ax=ax)
     df.plot(kind='line', x='dateTime', y='CabinTemp', ax=ax)
     df.plot(kind='line', x='dateTime', y='OutsideTemp', ax=ax)
     #plt.plot(x, y1, color="red", linewidth=3)

@@ -31,9 +31,9 @@ def preProcess():
         try:
             df = pd.read_csv(uCFilesFolder + f, sep=',', comment='#',
                     header=None, dtype=float,
-                    names = ["Unix", "BattV", "SolarV", "BattA", "LoadA",
-                        "BattPercent", "AveBattPower", "AveLoadPower",
-                        "OutsideTemp", "CabinTemp", "BattTemp"])
+                    names = ["Unix", "BattV", "SolarV", "LoadA", "BattA", "SolarA",
+                        "loadPWR", "solarPWR", "hydroPWR",
+                        "OutsideTemp", "CabinTemp", "BoxTemp"])
         except (pd.errors.EmptyDataError):
             print("Bad file: " + f)
             pass
@@ -110,7 +110,7 @@ def concatFiles():
                     header=None, dtype=float,
                     names = ["Unix", "BattV", "SolarV", "LoadA", "BattA", "SolarA",
                         "BattPercent", "AveBattPower", "AveLoadPower",
-                        "OutsideTemp", "CabinTemp", "BattTemp"])
+                        "OutsideTemp", "CabinTemp", "BoxTemp"])
         except (pd.errors.EmptyDataError):
             print("Bad file: " + f)
             pass
@@ -190,22 +190,24 @@ def concateData(Frames):
 
 def graphTemperatures(df):
 
-   #df.plot(kind='scatter', x='dateTime', y='BattTemp')
+   #df.plot(kind='scatter', x='dateTime', y='BoxTemp')
 
    ax = plt.gca()
-   df.plot(kind='line', x='dateTime', y='BattTemp',    ax=ax)
+   df.plot(kind='line', x='dateTime', y='BoxTemp',    ax=ax)
    df.plot(kind='line', x='dateTime', y='CabinTemp',   ax=ax)
    df.plot(kind='line', x='dateTime', y='OutsideTemp', ax=ax)
    plt.show()
 
 def graphBatt(df):
 
-   #df.plot(kind='scatter', x='dateTime', y='BattTemp')
 
    ax = plt.gca()
-   df.plot(kind='line', x='dateTime', y='BattV',    ax=ax)
-   df.plot(kind='line', x='dateTime', y='LoadA',   ax=ax)
-   df.plot(kind='line', x='dateTime', y='BattA', ax=ax)
+   df.plot(kind='line', x='dateTime', y=['BattV', 'SolarV'], ax=ax)
+   df.plot(kind='line', x='dateTime', y=['BattA', 'LoadA', 'SolarA'], ax=ax, secondary_y=True, mark_right=False)
+   ax.set_ylabel("Voltage (V)")
+   ax.right_ax.set_ylabel("Current (A)")
+   ax.set(xlabel="Date, Time",
+           title="Voltage and Current readings at TGC")
    plt.show()
 
 def main():

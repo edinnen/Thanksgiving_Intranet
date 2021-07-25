@@ -24,10 +24,13 @@ def main():
     uC.getuCTime()
     uC.getuCDataOutput()
     uC.downloadAllFiles()
-    #concatFiles()
+    concatFiles()
 
     while True:
-        print(uC.readLine())
+        line = uC.readLine()
+        if line:
+            print(line)
+        #print(uC.readLine())
 
 try:
     main()

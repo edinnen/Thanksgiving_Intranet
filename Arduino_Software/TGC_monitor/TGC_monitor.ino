@@ -35,7 +35,7 @@ Good things take time. Be patient.
  
 // set to 1 for faster write/read frequencies and clock updates.
 // set to 0 for production numbers
-#define DEBUG_SPEEDUP_TIME 0
+#define DEBUG_SPEEDUP_TIME 1
 
 // Comment out to use actual sensors
 #define DEBUG_SENSORS
@@ -82,7 +82,7 @@ elapsedMillis ENERGY_TIME_ELAPSED;
 // This interval is used when loads are connected. It is generally higher resolution
 const unsigned int LOW_RES_LOGGING_INTERVAL   = DEBUG_SPEEDUP_TIME ?        20 : (30*60); //seconds
 const unsigned int HI_RES_LOGGING_INTERVAL    = DEBUG_SPEEDUP_TIME ?         5 : (10*60); //seconds
-const unsigned int LOAD_DEBOUNCE_INTERVAL_SEC = DEBUG_SPEEDUP_TIME ?  (60*1) : (3600*6); // Seconds
+const unsigned int LOAD_DEBOUNCE_INTERVAL_SEC = DEBUG_SPEEDUP_TIME ?  (3600*1) : (3600*6); // Seconds
 const unsigned long int NEW_FILE_INTERVAL     = DEBUG_SPEEDUP_TIME ?  (36000) : (2419200); //Seconds between creating new files
 const int ENERGY_TIME_INTERVAL = 1000; //milliseconds
 
