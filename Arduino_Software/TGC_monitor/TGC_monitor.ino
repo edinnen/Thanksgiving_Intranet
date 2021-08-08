@@ -35,10 +35,10 @@ Good things take time. Be patient.
  
 // set to 1 for faster write/read frequencies and clock updates.
 // set to 0 for production numbers
-#define DEBUG_SPEEDUP_TIME 1
+#define DEBUG_SPEEDUP_TIME 0
 
 // Comment out to use actual sensors
-#define DEBUG_SENSORS
+//#define DEBUG_SENSORS
 
 // Comment out line to disable RPi Serial communication
 #define RPI_ENABLE 
@@ -135,11 +135,11 @@ INA219 BATT_MONITOR(0x41); // Installed
 #define LOAD_SHUNT_R      0.001
 INA219 LOAD_MONITOR(0x40); // Installed
 
-#define SOLAR_SHUNT_MAX_V  0.01 // ~8.9 amps * .001 ohms
-#define SOLAR_BUS_MAX_V    26 // Solar panel maxV is 21.2V
-#define SOLAR_MAX_CURRENT  9
+#define SOLAR_SHUNT_MAX_V  0.04 // ~8.9 amps * .001 ohms
+#define SOLAR_BUS_MAX_V    32.0 // Solar panel maxV is 21.2V
+#define SOLAR_MAX_CURRENT  20
 #define SOLAR_SHUNT_R      0.001
-INA219 SOLAR_MONITOR(0x45); // TODO
+INA219 SOLAR_MONITOR(0x45); // Installed
 #endif
 
 // Set up temperature sensors which are on a 'onewire' bus

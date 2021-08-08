@@ -86,7 +86,7 @@ void readVoltAmp(float Power[]){
         //debug_println("Solar INA219 not responding");
     }else{
         Power[4] = SOLAR_MONITOR.busVoltage();
-        Power[5] = SOLAR_MONITOR.shuntCurrent();
+        Power[5] = (-1.0)*SOLAR_MONITOR.shuntCurrent();
     }
 
 #ifdef DEBUG
