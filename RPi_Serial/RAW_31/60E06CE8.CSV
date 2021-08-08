@@ -1,0 +1,7 @@
+
+$$ bad file open: 60E060<60E060$$
+<1>
+#Thanksgiving Cabin Power System
+#Time is in UNIX Time#Created: 2021-07-03 at 13:37:10 or 1625319430 in UNIX time
+#Timestamp,Battery Voltage (V),Solar Voltage (V),Load Amps (A),Battery Amps (A),Solar Amps (A),Battery percentage, Power into Battery (w), Power to loads (w),Outside Temp (C),Cabin Temp (C),Battery Temp (C)
+1625319430,13.79,0.00,-5.15,0.14,0.00,99.96,-73.09,-2.09,28.69,23.94,24.25
