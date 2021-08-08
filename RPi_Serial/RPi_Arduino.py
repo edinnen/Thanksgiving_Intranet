@@ -13,6 +13,7 @@ import os
 import pandas as pd
 import uCTalk as uC
 from uCTalk import outputFolder
+#import Process_TGCPSM_Files as TGC
 
 def main():
     uC.connectPi()
@@ -24,7 +25,7 @@ def main():
     uC.getuCTime()
     uC.getuCDataOutput()
     uC.downloadAllFiles()
-    concatFiles()
+    #concatFiles()
 
     while True:
         line = uC.readLine()
