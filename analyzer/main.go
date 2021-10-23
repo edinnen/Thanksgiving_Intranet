@@ -23,7 +23,9 @@ func init() {
 	isRaspberryPi = runtime.GOOS == "linux" && runtime.GOARCH == "arm"
 	if !isRaspberryPi {
 		// Enable DEBUG logging on non Raspberry Pi hosts
+		logrus.Info("Enabling DEBUG logs")
 		logrus.SetLevel(logrus.DebugLevel)
+		return
 	}
 
 	logrus.SetFormatter(&logrus.TextFormatter{TimestampFormat: "2006-01-02 15:04:05", FullTimestamp: true})

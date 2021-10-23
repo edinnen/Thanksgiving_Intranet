@@ -28,10 +28,23 @@ type Connection struct {
 // NewConnection wakes up and establishes a connection with an Arduino
 func NewConnection(ctx context.Context, db *sqlx.DB, mutex *sync.Mutex) (Connection, error) {
 	// Discover TTYs
-	matches, err := filepath.Glob("/dev/ttyUSB*")
+	matches, err := filepath.Glob("/dev/cu.usb*")
 	if err != nil {
 		logrus.Fatalf("Failed to glob /dev/tty[A-Za-z]*")
 	}
+
+	usbMatches, err := filepath.Glob("/dev/ttyUSB*")
+	if err != nil {
+		logrus.Fatalf("Failed to glob /dev/tty[A-Za-z]*")
+	}
+
+	acmMatches, err := filepath.Glob("/dev/ttyACM*")
+	if err != nil {
+		logrus.Fatalf("Failed to glob /dev/tty[A-Za-z]*")
+	}
+
+	matches = append(matches, usbMatches...)
+	matches = append(matches, acmMatches...)
 
 	// Attempt to connect to a discovered TTY and say hello to initialize
 	var tty *serial.Port
@@ -40,7 +53,7 @@ func NewConnection(ctx context.Context, db *sqlx.DB, mutex *sync.Mutex) (Connect
 		tty, err = serial.OpenPort(c)
 		if err != nil {
 			// Failed to open TTY
-			continue
+			logrus.Fatal(err.Error())
 		}
 
 		logrus.Debug("Opening", match)

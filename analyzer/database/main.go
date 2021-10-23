@@ -76,7 +76,6 @@ func ensureAnomaliesTable(db *sqlx.DB) {
 		id			  	  INTEGER NOT NULL,
 		name			  TEXT,
 		timestamp         TIMESTAMP,
-		timestamp         TIMESTAMP,
 		unix              INTEGER,
 		battery_voltage   FLOAT64,
 		solar_voltage     FLOAT64,

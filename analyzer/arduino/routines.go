@@ -64,10 +64,10 @@ func (arduino Connection) StreamData(ctx context.Context, dataStream chan models
 	}
 }
 
-// CancelStreaming sends a <4> command to the Arduino
+// CancelStreaming sends a <8> command to the Arduino
 // and disregards the response to toggle data streaming before shutdown.
 func (arduino Connection) CancelStreaming(ctx context.Context) {
-	cmd := fmt.Sprintf("<4>") // Format our command for serial
+	cmd := fmt.Sprintf("<8>") // Format our command for serial
 	arduino.Write(cmd)
 }
 
