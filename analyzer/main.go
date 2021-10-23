@@ -61,12 +61,12 @@ func main() {
 		if err != nil {
 			logrus.Errorf("Failed to set RPi system time: %v", err)
 		}
-	}
 
-	logrus.Info("Downloading historical data...")
-	err = powerMonitor.SendHistoricalToDB(ctx, broker.Notifier)
-	if err != nil {
-		logrus.Error(err)
+		logrus.Info("Downloading historical data...")
+		err = powerMonitor.SendHistoricalToDB(ctx, broker.Notifier)
+		if err != nil {
+			logrus.Error(err)
+		}
 	}
 
 	// Stream arduino data to our events server's event channel

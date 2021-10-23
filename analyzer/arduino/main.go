@@ -151,6 +151,10 @@ func (arduino Connection) readCommand(ctx context.Context, command int) error {
 	}
 }
 
+func prepareLine(buf []byte, nr int) string {
+	return strings.ReplaceAll(strings.ReplaceAll(strings.TrimSpace(string(buf[:nr])), "\n", ""), "\r", "")
+}
+
 // ReadLine reads a single line, delimited by < and >, from the arduino.
 func (arduino Connection) ReadLine(ctx context.Context, enableTimeout bool) (line string, err error) {
 	capturing := false
@@ -178,9 +182,8 @@ func (arduino Connection) ReadLine(ctx context.Context, enableTimeout bool) (lin
 				continue
 			}
 
-			logrus.Debugf("Read: %s", strings.TrimSpace(string(buf[:nr])))
-
-			value := strings.TrimSpace(string(buf[:nr]))
+			value := prepareLine(buf, nr)
+			logrus.Debugf("Read: %s", value)
 
 			wholeError := regexp.MustCompile(`.*\$\$(.*?)\$\$.*`)
 			if wholeError.MatchString(value) {
@@ -253,7 +256,7 @@ func (arduino Connection) ReadLine(ctx context.Context, enableTimeout bool) (lin
 
 			// Handle lines with no delimiters if we've already seen a start delimiter
 			if capturing {
-				line = line + value
+				line = line + strings.TrimSuffix(value, "\r")
 			}
 		}
 	}

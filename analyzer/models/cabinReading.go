@@ -41,14 +41,14 @@ func (reading CabinReading) SendToDB(db *sqlx.DB, mutex *sync.Mutex) error {
 			solar_voltage,
 			battery_amperage,
 			load_amperage,
-			solar_amperage
+			solar_amperage,
 			avg_load_power,
 			avg_solar_power,
 			avg_hydro_power,
 			outside_temp,
 			cabin_temp,
 			battery_temp
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 	`,
 		reading.Timestamp,
 		reading.Unix,

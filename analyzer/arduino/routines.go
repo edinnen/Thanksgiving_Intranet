@@ -49,6 +49,7 @@ func (arduino Connection) StreamData(ctx context.Context, dataStream chan models
 				}
 				continue
 			}
+
 			// Parse into a CabinReading struct
 			reading, err := models.ParseCabinReading(line)
 			if err != nil {
@@ -136,7 +137,7 @@ func (arduino Connection) SendHistoricalToDB(ctx context.Context, dataStream cha
 
 					stringBuf := string(buf[:nr])
 					file += stringBuf
-					endSequence := regexp.MustCompile("<>")
+					endSequence := regexp.MustCompile("<")
 					if endSequence.MatchString(stringBuf) {
 						break readLoop
 					}
@@ -145,11 +146,14 @@ func (arduino Connection) SendHistoricalToDB(ctx context.Context, dataStream cha
 
 			lines := strings.Split(file, "\n")
 			for _, line := range lines {
+				if strings.Contains(line, "#") {
+					continue
+				}
 
 				// Parse into a CabinReading struct
 				reading, err := models.ParseCabinReading(line)
 				if err != nil {
-					if strings.Contains(line, "<>") || line == "" {
+					if strings.Contains(line, "<") || line == "" {
 						continue
 					}
 					logrus.Error("Failed to parse line:", line)
@@ -162,6 +166,7 @@ func (arduino Connection) SendHistoricalToDB(ctx context.Context, dataStream cha
 			close(done)
 		}()
 
+		logrus.Debugf("Requesting %s", file)
 		arduino.Write("<" + file + ">")
 		<-done
 		logrus.Info(file, " loaded into database")
@@ -219,13 +224,12 @@ func (arduino Connection) listRootDirectory(ctx context.Context) (filenames []st
 		}
 	}
 
-	filenameRegex := regexp.MustCompile(`<(.*?\.csv)>`)
+	filenameRegex := regexp.MustCompile(`(?i)<(.*?\.csv)>`)
 	matches := filenameRegex.FindAllStringSubmatch(data, -1)
 
 	for _, match := range matches {
 		filenames = append(filenames, match[1])
 	}
 
-	logrus.Debug("Read files: ", fmt.Sprintf("%v", filenames))
 	return
 }
