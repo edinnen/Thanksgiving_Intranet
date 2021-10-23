@@ -19,11 +19,12 @@ type CabinReading struct {
 	Unix            int64     `json:"unix" db:"unix"`
 	BatteryVoltage  float64   `json:"battery_voltage" db:"battery_voltage"`
 	SolarVoltage    float64   `json:"solar_voltage" db:"solar_voltage"`
-	BatteryAmperage float64   `json:"battery_amperage" db:"battery_amperage"`
 	LoadAmperage    float64   `json:"load_amperage" db:"load_amperage"`
-	BatteryPercent  float64   `json:"battery_percent" db:"battery_percent"`
-	AvgBatteryPower float64   `json:"avg_battery_power" db:"avg_battery_power"`
+	BatteryAmperage float64   `json:"battery_amperage" db:"battery_amperage"`
+	SolarAmperage   float64   `json:"solar_amperage" db:"solar_amperage"`
 	AvgLoadPower    float64   `json:"avg_load_power" db:"avg_load_power"`
+	AvgSolarPower   float64   `json:"avg_solar_power" db:"avg_solar_power"`
+	AvgHydroPower   float64   `json:"avg_hydro_power" db:"avg_hydro_power"`
 	OutsideTemp     float64   `json:"outside_temp" db:"outside_temp"`
 	CabinTemp       float64   `json:"cabin_temp" db:"cabin_temp"`
 	BatteryTemp     float64   `json:"battery_temp" db:"battery_temp"`
@@ -40,13 +41,14 @@ func (reading CabinReading) SendToDB(db *sqlx.DB, mutex *sync.Mutex) error {
 			solar_voltage,
 			battery_amperage,
 			load_amperage,
-			battery_percent,
-			avg_battery_power,
+			solar_amperage
 			avg_load_power,
+			avg_solar_power,
+			avg_hydro_power,
 			outside_temp,
 			cabin_temp,
 			battery_temp
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 	`,
 		reading.Timestamp,
 		reading.Unix,
@@ -54,9 +56,10 @@ func (reading CabinReading) SendToDB(db *sqlx.DB, mutex *sync.Mutex) error {
 		reading.SolarVoltage,
 		reading.BatteryAmperage,
 		reading.LoadAmperage,
-		reading.BatteryPercent,
-		reading.AvgBatteryPower,
+		reading.SolarAmperage,
 		reading.AvgLoadPower,
+		reading.AvgSolarPower,
+		reading.AvgHydroPower,
 		reading.OutsideTemp,
 		reading.CabinTemp,
 		reading.BatteryTemp,
@@ -78,6 +81,7 @@ func ParseCabinReading(line string) (reading CabinReading, err error) {
 	data := strings.Split(line, ",")
 
 	// Parse the unix timestamp properly
+	// Unix time here is GMT -7
 	unix, err := strconv.ParseInt(data[0], 10, 64)
 	if err != nil {
 		return
@@ -89,14 +93,15 @@ func ParseCabinReading(line string) (reading CabinReading, err error) {
 		Unix:            unix,
 		BatteryVoltage:  utils.StringToFloat(data[1]),
 		SolarVoltage:    utils.StringToFloat(data[2]),
-		BatteryAmperage: utils.StringToFloat(data[3]),
-		LoadAmperage:    utils.StringToFloat(data[4]),
-		BatteryPercent:  utils.StringToFloat(data[5]),
-		AvgBatteryPower: utils.StringToFloat(data[6]),
-		AvgLoadPower:    utils.StringToFloat(data[7]),
-		OutsideTemp:     utils.StringToFloat(data[8]),
-		CabinTemp:       utils.StringToFloat(data[9]),
-		BatteryTemp:     utils.StringToFloat(strings.TrimSpace(data[10])), // Trim \n
+		LoadAmperage:    utils.StringToFloat(data[3]),
+		BatteryAmperage: utils.StringToFloat(data[4]),
+		SolarAmperage:   utils.StringToFloat(data[5]),
+		AvgLoadPower:    utils.StringToFloat(data[6]),
+		AvgSolarPower:   utils.StringToFloat(data[7]),
+		AvgHydroPower:   utils.StringToFloat(data[8]),
+		OutsideTemp:     utils.StringToFloat(data[9]),
+		CabinTemp:       utils.StringToFloat(data[10]),
+		BatteryTemp:     utils.StringToFloat(strings.TrimSpace(data[11])), // Trim \n
 	}
 	return
 }
