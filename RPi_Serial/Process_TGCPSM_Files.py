@@ -34,19 +34,11 @@ def preProcess():
                     names = ["Unix", "BattV", "SolarV", "LoadA", "BattA", "SolarA",
                         "loadPWR", "solarPWR", "hydroPWR",
                         "OutsideTemp", "CabinTemp", "BoxTemp"])
-        except (pd.errors.EmptyDataError):
+        except pd.errors.EmptyDataError:
             print("Bad file: " + f)
-            pass
-
         # if no data, skip it
         if len(df.Unix) < 1:
             continue
-
-        # Add a column indicating if the loads are connected
-        if f.find('.ON') != -1:
-            df['LoadsConnected'] = 1
-        else:
-            df['LoadsConnected'] = 0
 
         # Remove any rows with timestamps before ~Jan 2020 or after ~ Jan 2030
         # If the clock is messed up on the uC it will sometimes output funny dates
@@ -111,20 +103,14 @@ def concatFiles():
                     names = ["Unix", "BattV", "SolarV", "LoadA", "BattA", "SolarA",
                         "BattPercent", "AveBattPower", "AveLoadPower",
                         "OutsideTemp", "CabinTemp", "BoxTemp"])
-        except (pd.errors.EmptyDataError):
+        except pd.errors.EmptyDataError:
             print("Bad file: " + f)
-            pass
-
         # if no data, skip it
         if len(df.Unix) < 1:
             continue
 
         # Add a column indicating if the loads are connected
-        if f.find('.ON') != -1:
-            df['LoadsConnected'] = 1
-        else:
-            df['LoadsConnected'] = 0
-
+        df['LoadsConnected'] = 1 if f.find('.ON') != -1 else 0
         # Remove any rows with timestamps before ~Jan 2020 or after ~ Jan 2030
         # If the clock is messed up on the uC it will sometimes output funny dates
         # This won't remove all the bad data but will help!
@@ -192,6 +178,12 @@ def graphTemperatures(df):
 
    #df.plot(kind='scatter', x='dateTime', y='BoxTemp')
 
+
+   # Remove sensor errors
+   df = df.drop(df[(df.BoxTemp < -50) | (df.BoxTemp > 70)].index)
+   df = df.drop(df[(df.CabinTemp < -50) | (df.CabinTemp > 70)].index)
+   df = df.drop(df[(df.OutsideTemp < -50) | (df.OutsideTemp > 70)].index)
+
    ax = plt.gca()
    df.plot(kind='line', x='dateTime', y='BoxTemp',    ax=ax)
    df.plot(kind='line', x='dateTime', y='CabinTemp',   ax=ax)
@@ -213,7 +205,7 @@ def graphBatt(df):
 def main():
     Frames = preProcess()
     print("preProcess done")
-    outputProcessedFiles(Frames)
+    #outputProcessedFiles(Frames)
     outputConcatFile(Frames)
     graphTemperatures(concateData(Frames))
     graphBatt(concateData(Frames))
