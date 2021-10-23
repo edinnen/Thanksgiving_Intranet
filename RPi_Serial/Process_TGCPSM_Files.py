@@ -9,7 +9,7 @@ import pandas as pd
 import time
 import matplotlib.pyplot as plt
 
-uCFilesFolder = "output/"
+uCFilesFolder = "rawFiles/"
 processedFilesFolder = "processedFiles/"
 
 def findAllOutputFiles():
@@ -18,7 +18,7 @@ def findAllOutputFiles():
         hexTime = int(filename.split('.')[0], 16)
         files.append((hexTime, filename))
     files =  sorted(files, key=lambda tup: tup[0])
-    #print(files)
+    print(files)
     return files
 
 def preProcess():
@@ -27,25 +27,18 @@ def preProcess():
 
     listOfFrames = []
     for _ , f in files:
+        print(f)
         try:
             df = pd.read_csv(uCFilesFolder + f, sep=',', comment='#',
                     header=None, dtype=float,
-                    names = ["Unix", "BattV", "SolarV", "BattA", "LoadA",
-                        "BattPercent", "AveBattPower", "AveLoadPower",
-                        "OutsideTemp", "CabinTemp", "BattTemp"])
-        except (pd.errors.EmptyDataError):
+                    names = ["Unix", "BattV", "SolarV", "LoadA", "BattA", "SolarA",
+                        "loadPWR", "solarPWR", "hydroPWR",
+                        "OutsideTemp", "CabinTemp", "BoxTemp"])
+        except pd.errors.EmptyDataError:
             print("Bad file: " + f)
-            pass
-
         # if no data, skip it
         if len(df.Unix) < 1:
             continue
-
-        # Add a column indicating if the loads are connected
-        if f.find('.ON') != -1:
-            df['LoadsConnected'] = 1
-        else:
-            df['LoadsConnected'] = 0
 
         # Remove any rows with timestamps before ~Jan 2020 or after ~ Jan 2030
         # If the clock is messed up on the uC it will sometimes output funny dates
@@ -107,23 +100,17 @@ def concatFiles():
         try:
             df = pd.read_csv(uCFilesFolder + f, sep=',', comment='#',
                     header=None, dtype=float,
-                    names = ["Unix", "BattV", "SolarV", "BattA", "LoadA",
+                    names = ["Unix", "BattV", "SolarV", "LoadA", "BattA", "SolarA",
                         "BattPercent", "AveBattPower", "AveLoadPower",
-                        "OutsideTemp", "CabinTemp", "BattTemp"])
-        except (pd.errors.EmptyDataError):
+                        "OutsideTemp", "CabinTemp", "BoxTemp"])
+        except pd.errors.EmptyDataError:
             print("Bad file: " + f)
-            pass
-
         # if no data, skip it
         if len(df.Unix) < 1:
             continue
 
         # Add a column indicating if the loads are connected
-        if f.find('.ON') != -1:
-            df['LoadsConnected'] = 1
-        else:
-            df['LoadsConnected'] = 0
-
+        df['LoadsConnected'] = 1 if f.find('.ON') != -1 else 0
         # Remove any rows with timestamps before ~Jan 2020 or after ~ Jan 2030
         # If the clock is messed up on the uC it will sometimes output funny dates
         # This won't remove all the bad data but will help!
@@ -189,19 +176,39 @@ def concateData(Frames):
 
 def graphTemperatures(df):
 
-   #df.plot(kind='scatter', x='dateTime', y='BattTemp')
+   #df.plot(kind='scatter', x='dateTime', y='BoxTemp')
+
+
+   # Remove sensor errors
+   df = df.drop(df[(df.BoxTemp < -50) | (df.BoxTemp > 70)].index)
+   df = df.drop(df[(df.CabinTemp < -50) | (df.CabinTemp > 70)].index)
+   df = df.drop(df[(df.OutsideTemp < -50) | (df.OutsideTemp > 70)].index)
 
    ax = plt.gca()
-   df.plot(kind='line', x='dateTime', y='BattTemp',    ax=ax)
+   df.plot(kind='line', x='dateTime', y='BoxTemp',    ax=ax)
    df.plot(kind='line', x='dateTime', y='CabinTemp',   ax=ax)
    df.plot(kind='line', x='dateTime', y='OutsideTemp', ax=ax)
    plt.show()
 
+def graphBatt(df):
+
+
+   ax = plt.gca()
+   df.plot(kind='line', x='dateTime', y=['BattV', 'SolarV'], ax=ax)
+   df.plot(kind='line', x='dateTime', y=['BattA', 'LoadA', 'SolarA'], ax=ax, secondary_y=True, mark_right=False)
+   ax.set_ylabel("Voltage (V)")
+   ax.right_ax.set_ylabel("Current (A)")
+   ax.set(xlabel="Date, Time",
+           title="Voltage and Current readings at TGC")
+   plt.show()
+
 def main():
     Frames = preProcess()
+    print("preProcess done")
     #outputProcessedFiles(Frames)
-    #outputConcatFile(Frames)
+    outputConcatFile(Frames)
     graphTemperatures(concateData(Frames))
+    graphBatt(concateData(Frames))
 
 try:
     main()

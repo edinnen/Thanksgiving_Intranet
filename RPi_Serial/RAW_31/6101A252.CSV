@@ -1,0 +1,5 @@
+
+#Thanksgiving Cabin Power System
+#Time is in UNIX Time#Created: 2021-07-03 at 13:58:22 or 1625320702 in UNIX time
+#Timestamp,Battery Voltage (V),Solar Voltage (V),Load Amps (A),Battery Amps (A),Solar Amps (A),Battery percentage, Power into Battery (w), Power to loads (w),Outside Temp (C),Cabin Temp (C),Battery Temp (C)
+1625320702,13.76,0.00,-5.67,-0.00,0.00,99.99,-69.52,0.04,28.94,24.19,23.63

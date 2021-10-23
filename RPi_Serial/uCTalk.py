@@ -13,7 +13,7 @@ import os
 import pandas as pd
 
 ser = serial.Serial()
-outputFolder = "output/"
+outputFolder = "rawFiles/"
 uCport = "/dev/ttyACM0"
 
 def search4uC():
@@ -152,6 +152,7 @@ def saveFile(outputFile):
                 f.close
                 return 0
             else:
+                #print(line)
                 f.write(line + '\n')
                 numlines += 1
 
@@ -177,10 +178,10 @@ def printRootDir():
         for i in range(1000):
             line = readLine()
             #print(line)
-            if line.find(".ON") != -1 or line.find(".OFF") != -1:
-                fileList.append(line)
+            if line.find(".csv") != -1 or line.find(".CSV") != -1:
+                fileList.append(line.strip(' <>'))
             elif line == "<>":
-                print("Files found: " + str(i))
+                print("Files found: " + str(len(fileList)))
                 print("File List:")
                 print(fileList)
                 return(fileList)
@@ -196,9 +197,9 @@ def getuCDataOutput():
 
     if writeCmd(3) == 3:
         rawData = readuCOutput()
-        print(rawData)
+        #print(rawData)
         dataList = rawData.split(',')
-        print(dataList)
+        #print(dataList)
         floatDataList = []
         for cell in dataList:
             floatDataList.append(float(cell))

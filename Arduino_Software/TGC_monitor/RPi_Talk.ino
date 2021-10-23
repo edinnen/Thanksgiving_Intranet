@@ -6,6 +6,7 @@ Transfering files and live data!
 */
 
 
+#ifdef RPI_ENABLE
 
 void RPi_setup(){
 
@@ -104,7 +105,7 @@ void printFile(){
 
     if (fileObj) {
         while (fileObj.available()) {
-          RPiSerial.print(fileObj.read());
+          RPiSerial.write(fileObj.read());
     }
     // I'm done
     RPiSerial.println("<>");
@@ -140,7 +141,7 @@ void printRootDirectory() {
 void singleLiveData(){
     char data[150];
     generateDataString(data);
-    RPiSerial.print('<');
+    RPiSerial.println('<');
     RPiSerial.print(data);
     RPiSerial.println('>');
 }
@@ -173,3 +174,5 @@ void deleteAllFilesOnSD() {
   // I'm done command
   RPiSerial.println("<>");
 }
+
+#endif //RPI_ENABLE

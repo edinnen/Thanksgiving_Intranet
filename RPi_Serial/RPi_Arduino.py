@@ -13,6 +13,7 @@ import os
 import pandas as pd
 import uCTalk as uC
 from uCTalk import outputFolder
+#import Process_TGCPSM_Files as TGC
 
 def main():
     uC.connectPi()
@@ -27,7 +28,10 @@ def main():
     #concatFiles()
 
     while True:
-        print(uC.readLine())
+        line = uC.readLine()
+        if line:
+            print(line)
+        #print(uC.readLine())
 
 try:
     main()
