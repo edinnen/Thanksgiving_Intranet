@@ -219,7 +219,7 @@ func (arduino Connection) listRootDirectory(ctx context.Context) (filenames []st
 		}
 	}
 
-	filenameRegex := regexp.MustCompile(`<(.*?\.(?:ONN|OFF))>`)
+	filenameRegex := regexp.MustCompile(`<(.*?\.csv)>`)
 	matches := filenameRegex.FindAllStringSubmatch(data, -1)
 
 	for _, match := range matches {
