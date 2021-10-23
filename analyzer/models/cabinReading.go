@@ -9,7 +9,7 @@ import (
 
 	"github.com/edinnen/Thanksgiving_Intranet/analyzer/utils"
 	"github.com/jmoiron/sqlx"
-	log "github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 )
 
 // CabinReading holds data from readings recieved via the Arduino.
@@ -66,7 +66,7 @@ func (reading CabinReading) SendToDB(db *sqlx.DB, mutex *sync.Mutex) error {
 	)
 	mutex.Unlock()
 	if err != nil {
-		log.Error(err)
+		logrus.Error(err)
 	}
 	return err
 }
@@ -75,7 +75,7 @@ func (reading CabinReading) SendToDB(db *sqlx.DB, mutex *sync.Mutex) error {
 func ParseCabinReading(line string) (reading CabinReading, err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			log.Error("Cabin reading failed to parse", r)
+			logrus.Error("Cabin reading failed to parse", r)
 		}
 	}()
 	data := strings.Split(line, ",")

@@ -10,10 +10,9 @@ import (
 	"sync"
 	"time"
 
-	log "github.com/sirupsen/logrus"
-
 	"github.com/edinnen/Thanksgiving_Intranet/analyzer/models"
 	"github.com/edinnen/Thanksgiving_Intranet/analyzer/utils"
+	"github.com/sirupsen/logrus"
 )
 
 // StreamData begins streaming readings from the arduino.
@@ -30,7 +29,7 @@ func (arduino Connection) StreamData(ctx context.Context, dataStream chan models
 		panic("Failed to initialize stream")
 	}
 	streaming = true
-	log.Info("Arduino data stream instantiated")
+	logrus.Info("Arduino data stream instantiated")
 
 	// Loop until done
 	for {
@@ -39,13 +38,13 @@ func (arduino Connection) StreamData(ctx context.Context, dataStream chan models
 			if streaming {
 				arduino.CancelStreaming(ctx)
 			}
-			log.Info("Data streaming stopped!")
+			logrus.Info("Data streaming stopped!")
 			return
 		default:
 			line, err := arduino.ReadLine(ctx, false)
 			if err != nil {
 				if !strings.Contains(fmt.Sprint(err), "shutdown") {
-					log.Error(err)
+					logrus.Error(err)
 					continue
 				}
 				continue
@@ -53,8 +52,8 @@ func (arduino Connection) StreamData(ctx context.Context, dataStream chan models
 			// Parse into a CabinReading struct
 			reading, err := models.ParseCabinReading(line)
 			if err != nil {
-				log.Error("Failed to parse line")
-				log.Error(err)
+				logrus.Error("Failed to parse line")
+				logrus.Error(err)
 				continue
 			}
 
@@ -92,7 +91,7 @@ func (arduino Connection) SendHistoricalToDB(ctx context.Context, dataStream cha
 			err := arduino.readCommand(ctx, 1)
 			if err != nil {
 				// Release execution blocker and exit the goroutine
-				log.Errorf("Error executing command: %v", err)
+				logrus.Errorf("Error executing command: %v", err)
 				success <- false
 				close(success)
 				return
@@ -118,7 +117,7 @@ func (arduino Connection) SendHistoricalToDB(ctx context.Context, dataStream cha
 			for {
 				select {
 				case <-ctx.Done():
-					log.Debugf("Cancelling historical stream of %s due to shutdown", file)
+					logrus.Debugf("Cancelling historical stream of %s due to shutdown", file)
 					close(done)
 					return
 				default:
@@ -126,7 +125,7 @@ func (arduino Connection) SendHistoricalToDB(ctx context.Context, dataStream cha
 					buf := make([]byte, 8192)
 					nr, err = arduino.Read(buf)
 					if err != nil {
-						log.Error(err)
+						logrus.Error(err)
 						return
 					}
 					if err != nil {
@@ -153,7 +152,7 @@ func (arduino Connection) SendHistoricalToDB(ctx context.Context, dataStream cha
 					if strings.Contains(line, "<>") || line == "" {
 						continue
 					}
-					log.Error("Failed to parse line:", line)
+					logrus.Error("Failed to parse line:", line)
 					continue
 				}
 
@@ -165,7 +164,7 @@ func (arduino Connection) SendHistoricalToDB(ctx context.Context, dataStream cha
 
 		arduino.Write("<" + file + ">")
 		<-done
-		log.Info(file, " loaded into database")
+		logrus.Info(file, " loaded into database")
 	}
 	return err
 }
@@ -209,7 +208,7 @@ func (arduino Connection) listRootDirectory(ctx context.Context) (filenames []st
 		buf := make([]byte, 8192)
 		nr, err = arduino.Read(buf)
 		if err != nil {
-			log.Error(err)
+			logrus.Error(err)
 			continue
 		}
 		stringBuf := string(buf[:nr])
@@ -227,6 +226,6 @@ func (arduino Connection) listRootDirectory(ctx context.Context) (filenames []st
 		filenames = append(filenames, match[1])
 	}
 
-	log.Debug("Read files: ", fmt.Sprintf("%v", filenames))
+	logrus.Debug("Read files: ", fmt.Sprintf("%v", filenames))
 	return
 }

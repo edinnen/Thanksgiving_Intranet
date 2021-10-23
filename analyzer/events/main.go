@@ -8,9 +8,8 @@ import (
 	"net/http"
 	"sync"
 
-	log "github.com/sirupsen/logrus"
-
 	"github.com/edinnen/Thanksgiving_Intranet/analyzer/models"
+	"github.com/sirupsen/logrus"
 )
 
 // Broker for Server Sent Events
@@ -44,13 +43,13 @@ func (broker *Broker) listen() {
 			// A new client has connected.
 			// Register their message channel
 			broker.clients[s] = true
-			log.Infof("Client added. %d registered clients", len(broker.clients))
+			logrus.Infof("Client added. %d registered clients", len(broker.clients))
 
 		case s := <-broker.closingClients:
 			// A client has dettached and we want to
 			// stop sending them messages.
 			delete(broker.clients, s)
-			log.Infof("Removed client. %d registered clients", len(broker.clients))
+			logrus.Infof("Removed client. %d registered clients", len(broker.clients))
 
 		case event := <-broker.Notifier:
 			data, _ := json.Marshal(event)
@@ -124,11 +123,11 @@ func StartEventsServer(broker *Broker, wg *sync.WaitGroup) *http.Server {
 		// ErrServerClosed returned on graceful server shutdown
 		if err := srv.ListenAndServe(); err != http.ErrServerClosed {
 			// Unexpected error. Port in use?
-			log.Fatalf("ListenAndServe(): %v", err)
+			logrus.Fatalf("ListenAndServe(): %v", err)
 		}
 	}()
 
-	log.Infof("Broadcasting readings on %s", srv.Addr)
+	logrus.Infof("Broadcasting readings on %s", srv.Addr)
 
 	// Returning reference so caller can call Shutdown()
 	return srv

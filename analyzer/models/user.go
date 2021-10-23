@@ -6,7 +6,7 @@ import (
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/jmoiron/sqlx"
-	log "github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -85,7 +85,7 @@ func (user User) Exists(db *sqlx.DB, mutex *sync.Mutex) (User, bool) {
 	err := db.Get(&u, "SELECT id, name, email, password, type FROM users WHERE email = ?;", user.Email)
 	mutex.Unlock()
 	if err != nil {
-		log.Errorf("Failed to pull user: %v", err)
+		logrus.Errorf("Failed to pull user: %v", err)
 		return u, false
 	}
 	return u, true
@@ -100,7 +100,7 @@ func (user *User) HashPassword() {
 	// than the MinCost (4)
 	hash, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.MinCost)
 	if err != nil {
-		log.Error(err)
+		logrus.Error(err)
 	}
 	// GenerateFromPassword returns a byte slice so we need to
 	// convert the bytes to a string and return it
@@ -116,14 +116,14 @@ func (user User) ValidatePassword(db *sqlx.DB, mutex *sync.Mutex) bool {
 	err := db.Get(&hashedPwd, "SELECT password FROM users WHERE email = ?", user.Email)
 	mutex.Unlock()
 	if err != nil {
-		log.Error(err)
+		logrus.Error(err)
 		return false
 	}
 
 	byteHash := []byte(hashedPwd)
 	err = bcrypt.CompareHashAndPassword(byteHash, plainPwd)
 	if err != nil {
-		log.Error(err)
+		logrus.Error(err)
 		return false
 	}
 

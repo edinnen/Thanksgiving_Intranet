@@ -8,7 +8,7 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	_ "github.com/mattn/go-sqlite3" // sqlite3 driver
-	log "github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 )
 
 // NewConnection opens the SQLite3 database and creates our table if necessary.
@@ -27,7 +27,7 @@ func NewConnection() (db *sqlx.DB, mutex *sync.Mutex) {
 
 	enableForeignKeys(db)
 
-	log.Info("Ensuring database tables exist...")
+	logrus.Info("Ensuring database tables exist...")
 	ensureReadingsTable(db)
 	ensureUsersTable(db)
 	ensureAnomaliesTable(db)
@@ -36,7 +36,7 @@ func NewConnection() (db *sqlx.DB, mutex *sync.Mutex) {
 }
 
 func enableForeignKeys(db *sqlx.DB) {
-	log.Info("Enabling database foreign keys...")
+	logrus.Info("Enabling database foreign keys...")
 	foreignKeySchema := `PRAGMA foreign_keys = ON;`
 	_, err := db.Exec(foreignKeySchema)
 	if err != nil {

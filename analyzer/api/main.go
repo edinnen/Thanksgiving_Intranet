@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/edinnen/Thanksgiving_Intranet/analyzer/api/frontend"
+	"github.com/sirupsen/logrus"
 
 	"github.com/edinnen/Thanksgiving_Intranet/analyzer/api/anomalous"
 	"github.com/edinnen/Thanksgiving_Intranet/analyzer/api/historical"
@@ -12,7 +13,6 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/jmoiron/sqlx"
 	"github.com/rs/cors"
-	log "github.com/sirupsen/logrus"
 )
 
 // Start our API attached to the given database
@@ -40,7 +40,7 @@ func Start(db *sqlx.DB, mutex *sync.Mutex) {
 
 	server := &http.Server{Handler: c.Handler(main)}
 
-	log.Info("API started on port :80")
+	logrus.Info("API started on port :80")
 
 	// Prevents memory leak
 	server.SetKeepAlivesEnabled(false)

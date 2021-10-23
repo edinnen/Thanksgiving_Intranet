@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/edinnen/Thanksgiving_Intranet/analyzer/models"
-	log "github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 	"gopkg.in/oleiade/reflections.v1"
 
 	"github.com/jmoiron/sqlx"
@@ -46,20 +46,20 @@ func (stats *Engine) SetReadingsData() error {
 	err := stats.db.Select(&readings, statement, from, to)
 	stats.mutex.Unlock()
 	stats.readings = readings
-	log.Infof("Found %d readings in range", len(readings))
+	logrus.Infof("Found %d readings in range", len(readings))
 	return err
 }
 
 // DetectStreamAnomalies checks for anomalous data over a three minute time range into the past
 func (stats *Engine) DetectStreamAnomalies() {
-	log.Info("Monitoring data stream for anomalies")
+	logrus.Info("Monitoring data stream for anomalies")
 	for now := range time.Tick(3 * time.Minute) {
 		from := now.Add(time.Duration(-3) * time.Minute)
 		stats.timeRange = TimeRange{
 			To:   now,
 			From: from,
 		}
-		log.Infof("Searching for battery voltages between %s and %s", from.String(), now.String())
+		logrus.Infof("Searching for battery voltages between %s and %s", from.String(), now.String())
 		stats.SetReadingsData()
 		if len(stats.readings) <= 0 {
 			continue
@@ -94,14 +94,14 @@ func computeAnomalous(field string, readings []models.CabinReading, values []big
 
 		value, err := reflections.GetField(reading, field)
 		if err != nil {
-			log.Error(err)
+			logrus.Error(err)
 			return models.Anomalies{}
 		}
 
 		anomaly, _ := anomalyDetector.EventIsAnomalous(*big.NewFloat(value.(float64)), big.NewFloat(0.001))
 		if anomaly {
 			anomalous = append(anomalous, reading)
-			log.Infof("Found anomalous value %v for %s", value, field)
+			logrus.Infof("Found anomalous value %v for %s", value, field)
 		}
 	}
 	return models.Anomalies{

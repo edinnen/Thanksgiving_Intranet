@@ -9,13 +9,12 @@ import (
 	"syscall"
 	"time"
 
-	log "github.com/sirupsen/logrus"
-
 	"github.com/edinnen/Thanksgiving_Intranet/analyzer/api"
 	"github.com/edinnen/Thanksgiving_Intranet/analyzer/arduino"
 	"github.com/edinnen/Thanksgiving_Intranet/analyzer/database"
 	"github.com/edinnen/Thanksgiving_Intranet/analyzer/events"
 	"github.com/edinnen/Thanksgiving_Intranet/analyzer/statistics"
+	"github.com/sirupsen/logrus"
 )
 
 var isRaspberryPi bool
@@ -24,15 +23,15 @@ func init() {
 	isRaspberryPi = runtime.GOOS == "linux" && runtime.GOARCH == "arm"
 	if !isRaspberryPi {
 		// Enable DEBUG logging on non Raspberry Pi hosts
-		log.SetLevel(log.DebugLevel)
+		logrus.SetLevel(logrus.DebugLevel)
 	}
 
-	log.SetFormatter(&log.TextFormatter{TimestampFormat: "2006-01-02 15:04:05", FullTimestamp: true})
+	logrus.SetFormatter(&logrus.TextFormatter{TimestampFormat: "2006-01-02 15:04:05", FullTimestamp: true})
 	file, err := os.OpenFile("analyzer.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
 	if err == nil {
-		log.SetOutput(file)
+		logrus.SetOutput(file)
 	} else {
-		log.Warn("Failed to log to file, using default stderr")
+		logrus.Warn("Failed to log to file, using default stderr")
 	}
 }
 
@@ -53,19 +52,19 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	log.Info("Arduino connection established and greetings exchanged")
+	logrus.Info("Arduino connection established and greetings exchanged")
 
 	if isRaspberryPi {
 		err := powerMonitor.SyncSystemTime(ctx)
 		if err != nil {
-			log.Errorf("Failed to set RPi system time: %v", err)
+			logrus.Errorf("Failed to set RPi system time: %v", err)
 		}
 	}
 
-	log.Info("Downloading historical data...")
+	logrus.Info("Downloading historical data...")
 	err = powerMonitor.SendHistoricalToDB(ctx, broker.Notifier)
 	if err != nil {
-		log.Error(err)
+		logrus.Error(err)
 	}
 
 	// Stream arduino data to our events server's event channel
@@ -79,12 +78,12 @@ func main() {
 	signal.Notify(termChan, os.Interrupt, os.Kill, syscall.SIGINT, syscall.SIGTERM, syscall.SIGKILL)
 	<-termChan
 
-	log.Warn("Shutdown signal received")
+	logrus.Warn("Shutdown signal received")
 
 	cancelFunc() // Signal cancellation to workers via context.Context
 	ctx2, cancelTimeout := context.WithTimeout(context.Background(), 10*time.Second)
 	srv.Shutdown(ctx2)
 	wg.Wait() // Block here until are workers have terminated
 	cancelTimeout()
-	log.Info("All workers done, shutting down!")
+	logrus.Info("All workers done, shutting down!")
 }

@@ -14,9 +14,8 @@ import (
 	"time"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/sirupsen/logrus"
 	"github.com/tarm/serial"
-
-	log "github.com/sirupsen/logrus"
 )
 
 // Connection to an Arduino via TTY
@@ -31,7 +30,7 @@ func NewConnection(ctx context.Context, db *sqlx.DB, mutex *sync.Mutex) (Connect
 	// Discover TTYs
 	matches, err := filepath.Glob("/dev/ttyUSB*")
 	if err != nil {
-		log.Fatalf("Failed to glob /dev/tty[A-Za-z]*")
+		logrus.Fatalf("Failed to glob /dev/tty[A-Za-z]*")
 	}
 
 	// Attempt to connect to a discovered TTY and say hello to initialize
@@ -44,14 +43,14 @@ func NewConnection(ctx context.Context, db *sqlx.DB, mutex *sync.Mutex) (Connect
 			continue
 		}
 
-		log.Debug("Opening", match)
+		logrus.Debug("Opening", match)
 		connection := Connection{
 			Interface: tty,
 			DB:        db,
 			Mutex:     mutex,
 		}
 
-		log.Info("Waking up arduino...")
+		logrus.Info("Waking up arduino...")
 		attempt1 := connection.Command(ctx, 0)
 		if attempt1 {
 			return connection, nil
@@ -81,7 +80,7 @@ func (arduino Connection) Write(data string) (int, error) {
 
 // Command sends a command to the Arduino.
 func (arduino Connection) Command(ctx context.Context, command int) (success bool) {
-	log.Debugf("Sending command: %d\n", command)
+	logrus.Debugf("Sending command: %d\n", command)
 
 	cmd := fmt.Sprintf("<%d>", command) // Format our command for serial
 	done := make(chan bool, 1)          // Create an execution blocker
@@ -94,15 +93,15 @@ func (arduino Connection) Command(ctx context.Context, command int) (success boo
 			if strings.Contains(fmt.Sprintf("%v", err), "timed out") {
 				msg := fmt.Sprintf("Timed out listening for response to command <%d>", command)
 				if command == 0 {
-					log.Debug(msg)
+					logrus.Debug(msg)
 				} else {
-					log.Error(msg)
+					logrus.Error(msg)
 				}
 				close(done)
 				return
 			}
 			// Release execution blocker and exit the goroutine
-			log.Errorf("Error executing command: %v", err)
+			logrus.Errorf("Error executing command: %v", err)
 			close(done)
 			return
 		}
@@ -166,7 +165,7 @@ func (arduino Connection) ReadLine(ctx context.Context, enableTimeout bool) (lin
 				continue
 			}
 
-			log.Debugf("Read: %s", strings.TrimSpace(string(buf[:nr])))
+			logrus.Debugf("Read: %s", strings.TrimSpace(string(buf[:nr])))
 
 			value := strings.TrimSpace(string(buf[:nr]))
 

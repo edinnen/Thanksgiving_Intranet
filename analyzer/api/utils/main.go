@@ -5,13 +5,13 @@ import (
 	"fmt"
 	"net/http"
 
-	log "github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 )
 
 // RespondWithError responds with error
 func RespondWithError(w http.ResponseWriter, code int, err error) {
 	e := fmt.Sprintf("%s", err)
-	log.Error(e)
+	logrus.Error(e)
 	RespondWithJSON(w, code, map[string]string{"error": e})
 }
 
