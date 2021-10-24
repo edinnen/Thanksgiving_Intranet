@@ -70,7 +70,7 @@ func main() {
 		}
 
 		logrus.Info("Downloading historical data...")
-		err = powerMonitor.SendHistoricalToDB(ctx, broker.Notifier)
+		err = powerMonitor.SendHistoricalToDB(ctx, broker.Notifier, db)
 		if err != nil {
 			logrus.Error(err)
 		}
@@ -80,8 +80,8 @@ func main() {
 	wg.Add(1)
 	go powerMonitor.StreamData(ctx, broker.Notifier, wg)
 
-	// statisticsEngine := statistics.NewClient(db, mutex)
-	// go statisticsEngine.DetectStreamAnomalies()
+	// // statisticsEngine := statistics.NewClient(db, mutex)
+	// // go statisticsEngine.DetectStreamAnomalies()
 
 	termChan := make(chan os.Signal)
 	signal.Notify(termChan, os.Interrupt, os.Kill, syscall.SIGINT, syscall.SIGTERM, syscall.SIGKILL)
