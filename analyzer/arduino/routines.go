@@ -88,6 +88,19 @@ FileLoop:
 		success := make(chan bool, 1) // Create an execution blocker
 		done := make(chan bool, 1)
 
+		rows, err := db.Query("SELECT name FROM historical_files WHERE name = ?;", file)
+		if err != nil {
+			logrus.Fatal(err)
+		}
+		for rows.Next() {
+			var name string
+			rows.Scan(&name)
+			if name != "" {
+				logrus.Debugf("Skipping download of %s. Already recieved.", name)
+				continue FileLoop
+			}
+		}
+
 		// Continually listen for the command response while we send the command
 		go func() {
 			err := arduino.readCommand(ctx, 1)
@@ -145,7 +158,7 @@ FileLoop:
 				}
 			}
 
-			lines := strings.Split(file, "\n")
+			lines := strings.Split(strings.ReplaceAll(file, "\r", ""), "\n")
 			for _, line := range lines {
 				if strings.Contains(line, "#") {
 					continue
@@ -166,19 +179,6 @@ FileLoop:
 			}
 			close(done)
 		}()
-
-		rows, err := db.Query("SELECT name FROM historical_files WHERE name = ?;", file)
-		if err != nil {
-			logrus.Fatal(err)
-		}
-		for rows.Next() {
-			var name string
-			rows.Scan(&name)
-			if name != "" {
-				logrus.Debugf("Skipping download of %s. Already recieved.", name)
-				continue FileLoop
-			}
-		}
 
 		logrus.Debugf("Requesting %s", file)
 		arduino.Write("<" + file + ">")
