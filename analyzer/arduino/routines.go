@@ -167,7 +167,7 @@ FileLoop:
 			close(done)
 		}()
 
-		rows, err := db.Query("SELECT name FROM historical_files;")
+		rows, err := db.Query("SELECT name FROM historical_files WHERE name = ?;", file)
 		if err != nil {
 			logrus.Fatal(err)
 		}
