@@ -68,8 +68,7 @@ func (arduino Connection) StreamData(ctx context.Context, dataStream chan models
 // CancelStreaming sends a <8> command to the Arduino
 // and disregards the response to toggle data streaming before shutdown.
 func (arduino Connection) CancelStreaming(ctx context.Context) {
-	cmd := fmt.Sprintf("<8>") // Format our command for serial
-	arduino.Write(cmd)
+	arduino.Write("<8>")
 }
 
 // SendHistoricalToDB requests historical data to be streamed to us via serial.
@@ -178,7 +177,7 @@ func (arduino Connection) SendHistoricalToDB(ctx context.Context, dataStream cha
 func (arduino Connection) SyncSystemTime(ctx context.Context) error {
 	success := arduino.Command(ctx, 5)
 	if !success {
-		return fmt.Errorf("Failed to obtain response from command <5>")
+		return fmt.Errorf("failed to obtain response from command <5>")
 	}
 
 	line, err := arduino.ReadLine(ctx, true)

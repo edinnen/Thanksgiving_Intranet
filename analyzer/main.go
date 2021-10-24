@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"os"
 	"os/signal"
 	"runtime"
@@ -19,9 +20,11 @@ import (
 
 var isRaspberryPi bool
 
+var debug = flag.Bool("debug", false, "Should log debug messages")
+
 func init() {
 	isRaspberryPi = runtime.GOOS == "linux" && runtime.GOARCH == "arm"
-	if !isRaspberryPi {
+	if *debug || !isRaspberryPi {
 		// Enable DEBUG logging on non Raspberry Pi hosts
 		logrus.Info("Enabling DEBUG logs")
 		logrus.SetLevel(logrus.DebugLevel)
