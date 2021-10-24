@@ -4,6 +4,7 @@ package database
 
 import (
 	"database/sql"
+	"fmt"
 	"sync"
 
 	"github.com/jmoiron/sqlx"
@@ -12,14 +13,15 @@ import (
 )
 
 // NewConnection opens the SQLite3 database and creates our table if necessary.
-func NewConnection() (db *sqlx.DB, mutex *sync.Mutex) {
+func NewConnection(databasePath *string) (db *sqlx.DB, mutex *sync.Mutex) {
 	mutex = &sync.Mutex{}
 	db, err := sqlx.Open("sqlite3", ":memory:")
 	if err != nil {
 		panic(err)
 	}
 
-	sqlite, err := sql.Open("sqlite3", "file:cabin.db?cache=shared&mode=rwc")
+	connString := fmt.Sprintf("file:%s?cache=shared&mode=rwc", *databasePath)
+	sqlite, err := sql.Open("sqlite3", connString)
 	if err != nil {
 		panic(err)
 	}

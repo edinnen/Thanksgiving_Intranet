@@ -22,8 +22,11 @@ var isRaspberryPi bool
 
 var debug = flag.Bool("debug", false, "Should log debug messages")
 var toFile = flag.Bool("toFile", true, "Should log to a file analyzer.log")
+var db = flag.String("db", "cabin.db", "Path to the database file (created if does not exist)")
+var output = flag.String("output", "analyzer.log", "Path to the log file (created if does not exist)")
 
 func init() {
+	flag.Parse()
 	isRaspberryPi = runtime.GOOS == "linux" && runtime.GOARCH == "arm"
 	if *debug || !isRaspberryPi {
 		// Enable DEBUG logging on non Raspberry Pi hosts
@@ -33,7 +36,7 @@ func init() {
 
 	if *toFile {
 		logrus.SetFormatter(&logrus.TextFormatter{TimestampFormat: "2006-01-02 15:04:05", FullTimestamp: true})
-		file, err := os.OpenFile("analyzer.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+		file, err := os.OpenFile(*output, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
 		if err == nil {
 			logrus.SetOutput(file)
 		} else {
@@ -45,9 +48,9 @@ func init() {
 func main() {
 	ctx, cancelFunc := context.WithCancel(context.Background())
 
-	db, mutex := database.NewConnection() // Initialize our database connection
-	broker := events.NewServer()          // Initialize a new server for HTTP events
-	wg := &sync.WaitGroup{}               // Initialize wait group
+	db, mutex := database.NewConnection(db) // Initialize our database connection
+	broker := events.NewServer()            // Initialize a new server for HTTP events
+	wg := &sync.WaitGroup{}                 // Initialize wait group
 	defer db.Close()
 
 	go api.Start(db, mutex)
