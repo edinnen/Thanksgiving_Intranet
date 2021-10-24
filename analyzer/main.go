@@ -14,7 +14,6 @@ import (
 	"github.com/edinnen/Thanksgiving_Intranet/analyzer/arduino"
 	"github.com/edinnen/Thanksgiving_Intranet/analyzer/database"
 	"github.com/edinnen/Thanksgiving_Intranet/analyzer/events"
-	"github.com/edinnen/Thanksgiving_Intranet/analyzer/statistics"
 	"github.com/sirupsen/logrus"
 )
 
@@ -81,8 +80,8 @@ func main() {
 	wg.Add(1)
 	go powerMonitor.StreamData(ctx, broker.Notifier, wg)
 
-	statisticsEngine := statistics.NewClient(db, mutex)
-	go statisticsEngine.DetectStreamAnomalies()
+	// statisticsEngine := statistics.NewClient(db, mutex)
+	// go statisticsEngine.DetectStreamAnomalies()
 
 	termChan := make(chan os.Signal)
 	signal.Notify(termChan, os.Interrupt, os.Kill, syscall.SIGINT, syscall.SIGTERM, syscall.SIGKILL)
