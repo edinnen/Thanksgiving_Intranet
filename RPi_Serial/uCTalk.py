@@ -162,11 +162,11 @@ def saveFile(outputFile):
         f.close
         if os.path.exists(outputFolder + outputFile):
             os.remove(outputFolder + outputFile)
-        return -1
     else:
         print("Didn't print file")
         f.close
-        return -1
+
+    return -1
 
 
 def printRootDir():
@@ -291,10 +291,8 @@ def concatFiles():
                     names = ["Unix", "BattV", "SolarV", "BattA", "LoadA", "BattPercent", "AveBattPower", "AveLoadPower", "OutsideTemp", "CabinTemp", "BattTemp"])
             if len(df.columns) == 11:
                 listOfFrames.append(df)
-        except (pd.errors.EmptyDataError):
+        except pd.errors.EmptyDataError:
             print("Bad file: " + f)
-            pass
-
     combined_df = pd.concat(listOfFrames)
     indexNames = combined_df[ (combined_df["Unix"] < 1577903693) | (combined_df['Unix'] > 1893522893) ].index
     combined_df.drop(indexNames, inplace=True)
@@ -310,4 +308,3 @@ def concatFiles():
     #export to csv
     combined_df.to_csv( processedFilename, index=False, encoding="utf-8")
     reduceResolution(combined_df)
-
