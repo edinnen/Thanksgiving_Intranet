@@ -21,6 +21,7 @@ import (
 var isRaspberryPi bool
 
 var debug = flag.Bool("debug", false, "Should log debug messages")
+var toFile = flag.Bool("toFile", true, "Should log to a file analyzer.log")
 
 func init() {
 	isRaspberryPi = runtime.GOOS == "linux" && runtime.GOARCH == "arm"
@@ -28,15 +29,16 @@ func init() {
 		// Enable DEBUG logging on non Raspberry Pi hosts
 		logrus.Info("Enabling DEBUG logs")
 		logrus.SetLevel(logrus.DebugLevel)
-		return
 	}
 
-	logrus.SetFormatter(&logrus.TextFormatter{TimestampFormat: "2006-01-02 15:04:05", FullTimestamp: true})
-	file, err := os.OpenFile("analyzer.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
-	if err == nil {
-		logrus.SetOutput(file)
-	} else {
-		logrus.Warn("Failed to log to file, using default stderr")
+	if *toFile {
+		logrus.SetFormatter(&logrus.TextFormatter{TimestampFormat: "2006-01-02 15:04:05", FullTimestamp: true})
+		file, err := os.OpenFile("analyzer.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+		if err == nil {
+			logrus.SetOutput(file)
+		} else {
+			logrus.Warn("Failed to log to file, using default stderr")
+		}
 	}
 }
 
