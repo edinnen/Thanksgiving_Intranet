@@ -13,6 +13,7 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
+    - uses: actions/setup-go@v2
     - name: Install SSH Key
       uses: shimataro/ssh-key-action@v2
       with:
@@ -24,5 +25,7 @@ jobs:
       run: |
         cd analyzer
         make compile
+        ssh pi@thanksgiving.dinnen.engineering "sudo systemctl stop analyzer"
         rsync -z --progress ./build/analyzer-linux-arm-5 pi@thanksgiving.dinnen.engineering:~/go/bin/analyzer
+        ssh pi@thanksgiving.dinnen.engineering "sudo systemctl start analyzer"
         
