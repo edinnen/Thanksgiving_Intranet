@@ -32,5 +32,12 @@ jobs:
         export PATH=$PATH:$(go env GOPATH)/bin
         make compile
         rsync -z --progress ./build/analyzer-linux-arm-5 pi@thanksgiving.dinnen.engineering:~/go/bin/analyzer
+        cd ..
+    - name: Build Frontend
+      run: |
+        cd frontend
+        yarn
+        yarn build
+        yarn upload
     - name: Start Pi
       run: ssh pi@thanksgiving.dinnen.engineering "sudo systemctl start analyzer"
