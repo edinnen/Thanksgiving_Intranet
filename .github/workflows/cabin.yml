@@ -7,7 +7,7 @@ on:
     branches: [ master ]
 
 jobs:
-  detect_changes:
+  changes:
     runs-on: ubuntu-latest
     outputs:
       analyzer: ${{ steps.filter.outputs.analyzer }}
