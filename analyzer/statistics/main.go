@@ -54,7 +54,7 @@ func (stats *Engine) SetReadingsData() error {
 func (stats *Engine) DetectStreamAnomalies() {
 	logrus.Info("Monitoring data stream for anomalies")
 	for now := range time.Tick(3 * time.Minute) {
-		from := now.Add(time.Duration(-3) * time.Minute)
+		from := now.Add(-3 * time.Minute)
 		stats.timeRange = TimeRange{
 			To:   now,
 			From: from,
