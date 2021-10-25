@@ -27,6 +27,7 @@ jobs:
             - 'Arduino_Software/**'
 
   halt_system:
+    needs: [changes, halt_system]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -41,7 +42,7 @@ jobs:
         run: ssh pi@thanksgiving.dinnen.engineering "sudo systemctl stop analyzer"
 
   build_arduino:
-    needs: changes
+    needs: [changes, halt_system]
     if: ${{ needs.changes.outputs.arduino_software == 'true' }}
     runs-on: ubuntu-latest
     steps:
@@ -58,7 +59,7 @@ jobs:
           ssh pi@thanksgiving.dinnen.engineering "cd /home/pi/Thanksgiving_Intranet/Arduino_Software; git pull; make"
 
   build_analyzer:
-    needs: changes
+    needs: [changes, halt_system]
     if: ${{ needs.changes.outputs.analyzer == 'true' }}
     runs-on: ubuntu-latest
     steps:
@@ -78,7 +79,7 @@ jobs:
           rsync -z --progress ./build/analyzer-linux-arm-5 pi@thanksgiving.dinnen.engineering:~/go/bin/analyzer
 
   build_frontend:
-    needs: changes
+    needs: [changes, halt_system]
     if: ${{ needs.changes.outputs.analyzer == 'true' }}
     runs-on: ubuntu-latest
     steps:
@@ -98,6 +99,8 @@ jobs:
           yarn upload
           
   start_system:
+    needs: [changes, halt_system, build_arduino, build_analyzer, build_frontend]
+    if: always()
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
