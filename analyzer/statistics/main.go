@@ -100,10 +100,10 @@ func computeAnomalous(field string, readings []models.CabinReading, values []big
 			return models.Anomalies{}
 		}
 
-		event := *big.NewFloat(value.(float64))
-		if event == *big.NewFloat(0) {
+		if value == 0 {
 			continue
 		}
+		event := *big.NewFloat(value.(float64))
 
 		anomaly, _ := anomalyDetector.EventIsAnomalous(event, big.NewFloat(0.001))
 		if anomaly {
