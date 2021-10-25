@@ -26,6 +26,7 @@ jobs:
 
   halt_system:
     needs: changes
+    if: ${{ needs.changes.outputs.analyzer == 'true' || needs.changes.outputs.frontend == 'true' || needs.changes.outputs.arduino_software == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - name: Install SSH Key
@@ -96,7 +97,7 @@ jobs:
           
   start_system:
     needs: [changes, halt_system, build_arduino, build_analyzer, build_frontend]
-    if: always()
+    if: ${{ needs.changes.outputs.analyzer == 'true' || needs.changes.outputs.frontend == 'true' || needs.changes.outputs.arduino_software == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - name: Install SSH Key
