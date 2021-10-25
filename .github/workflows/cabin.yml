@@ -7,37 +7,106 @@ on:
     branches: [ master ]
 
 jobs:
-  build:
-
+  detect_changes:
     runs-on: ubuntu-latest
-
+    outputs:
+      analyzer: ${{ steps.filter.outputs.analyzer }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+      arduino_software: ${{ steps.filter.outputs.arduino_software }}
     steps:
     - uses: actions/checkout@v2
-    - uses: actions/setup-go@v2
-    - name: Install SSH Key
-      uses: shimataro/ssh-key-action@v2
+    - uses: dorny/paths-filter@v2
+      id: filter
       with:
-        key: ${{ secrets.SSH_PRIVATE_KEY }}
-        known_hosts: 'just-a-placeholder-so-we-dont-get-errors'
-    - name: Adding Known Hosts
-      run: ssh-keyscan -H thanksgiving.dinnen.engineering >> ~/.ssh/known_hosts
-    - name: Stop Pi
-      run: ssh pi@thanksgiving.dinnen.engineering "sudo systemctl stop analyzer"
-    - name: Build Arduino
-      run: |
-        ssh pi@thanksgiving.dinnen.engineering "cd /home/pi/Thanksgiving_Intranet/Arduino_Software; git pull; make"
-    - name: Build Analyzer
-      run: |
-        cd analyzer
-        export PATH=$PATH:$(go env GOPATH)/bin
-        make compile
-        rsync -z --progress ./build/analyzer-linux-arm-5 pi@thanksgiving.dinnen.engineering:~/go/bin/analyzer
-        cd ..
-    - name: Build Frontend
-      run: |
-        cd frontend
-        yarn
-        yarn build
-        yarn upload
-    - name: Start Pi
-      run: ssh pi@thanksgiving.dinnen.engineering "sudo systemctl start analyzer"
+        filters: |
+          analyzer:
+            - 'analyzer/**'
+          frontend:
+            - 'frontend/**'
+          arduino_software:
+            - 'Arduino_Software/**'
+
+  halt_system:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install SSH Key
+        uses: shimataro/ssh-key-action@v2
+        with:
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          known_hosts: 'just-a-placeholder-so-we-dont-get-errors'
+      - name: Adding Known Hosts
+        run: ssh-keyscan -H thanksgiving.dinnen.engineering >> ~/.ssh/known_hosts
+      - name: Stop Pi
+        run: ssh pi@thanksgiving.dinnen.engineering "sudo systemctl stop analyzer"
+
+  build_arduino:
+    needs: changes
+    if: ${{ needs.changes.outputs.arduino_software == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install SSH Key
+        uses: shimataro/ssh-key-action@v2
+        with:
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          known_hosts: 'just-a-placeholder-so-we-dont-get-errors'
+      - name: Adding Known Hosts
+        run: ssh-keyscan -H thanksgiving.dinnen.engineering >> ~/.ssh/known_hosts
+      - name: Build Arduino
+        run: |
+          ssh pi@thanksgiving.dinnen.engineering "cd /home/pi/Thanksgiving_Intranet/Arduino_Software; git pull; make"
+
+  build_analyzer:
+    needs: changes
+    if: ${{ needs.changes.outputs.analyzer == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install SSH Key
+        uses: shimataro/ssh-key-action@v2
+        with:
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          known_hosts: 'just-a-placeholder-so-we-dont-get-errors'
+      - name: Adding Known Hosts
+        run: ssh-keyscan -H thanksgiving.dinnen.engineering >> ~/.ssh/known_hosts
+      - name: Build Analyzer
+        run: |
+          cd analyzer
+          export PATH=$PATH:$(go env GOPATH)/bin
+          make compile
+          rsync -z --progress ./build/analyzer-linux-arm-5 pi@thanksgiving.dinnen.engineering:~/go/bin/analyzer
+
+  build_frontend:
+    needs: changes
+    if: ${{ needs.changes.outputs.analyzer == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install SSH Key
+        uses: shimataro/ssh-key-action@v2
+        with:
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          known_hosts: 'just-a-placeholder-so-we-dont-get-errors'
+      - name: Adding Known Hosts
+        run: ssh-keyscan -H thanksgiving.dinnen.engineering >> ~/.ssh/known_hosts
+      - name: Build Frontend
+        run: |
+          cd frontend
+          yarn
+          yarn build
+          yarn upload
+          
+  start_system:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install SSH Key
+        uses: shimataro/ssh-key-action@v2
+        with:
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          known_hosts: 'just-a-placeholder-so-we-dont-get-errors'
+      - name: Adding Known Hosts
+        run: ssh-keyscan -H thanksgiving.dinnen.engineering >> ~/.ssh/known_hosts
+      - name: Start Pi
+        run: ssh pi@thanksgiving.dinnen.engineering "sudo systemctl start analyzer"
