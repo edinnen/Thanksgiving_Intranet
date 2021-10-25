@@ -1,0 +1,57 @@
+/**
+ * @license
+ * MyFonts Webfont Build ID 3904870, 2020-05-20T01:45:10-0400
+ *
+ * The fonts listed in this notice are subject to the End User License
+ * Agreement(s) entered into by the website owner. All other parties are
+ * explicitly restricted from using the Licensed webfonts(s).
+ *
+ * You may obtain a valid license at the URLs below.
+ *
+ * Webfont: Gilroy-Regular by Radomir Tinkov
+ * URL: https://www.myfonts.com/fonts/radomir-tinkov/gilroy/regular/
+ *
+ * Webfont: Gilroy-Light by Radomir Tinkov
+ * URL: https://www.myfonts.com/fonts/radomir-tinkov/gilroy/light/
+ *
+ * Webfont: Gilroy-ExtraBold by Radomir Tinkov
+ * URL: https://www.myfonts.com/fonts/radomir-tinkov/gilroy/extra-bold/
+ *
+ * Webfont: Gilroy-Bold by Radomir Tinkov
+ * URL: https://www.myfonts.com/fonts/radomir-tinkov/gilroy/bold/
+ *
+ *
+ * webfonts copyright: Copyright &amp;#x00A9; 2016 by Radomir Tinkov. All rights reserved.
+ *
+ * © 2020 MyFonts Inc
+*/
+
+/* @import must be at top of file, otherwise CSS will not work */
+@import url('//hello.myfonts.net/count/3b9566');
+
+@font-face {
+  font-family: 'Gilroy-Regular';
+  src: url('./webfonts/Gilroy-Regular/font.woff2') format('woff2'),
+    url('./webfonts/Gilroy-Regular/font.woff') format('woff');
+}
+@font-face {
+  font-family: 'Gilroy-Bold';
+  src: url('./webfonts/Gilroy-Bold/font.woff2') format('woff2'),
+    url('./webfonts/Gilroy-Bold/font.woff') format('woff');
+}
+@font-face {
+  font-family: 'Gilroy-Light';
+  src: url('./webfonts/Gilroy-Light/font.woff2') format('woff2'),
+    url('./webfonts/Gilroy-Light/font.woff') format('woff');
+}
+@font-face {
+  font-family: 'Gilroy-ExtraBold';
+  src: url('./webfonts/Gilroy-ExtraBold/font.woff2') format('woff2'),
+    url('./webfonts/Gilroy-ExtraBold/font.woff') format('woff');
+}
+
+@font-face {
+  font-family: 'Gilroy-Medium';
+  src: url('./webfonts/Gilroy-Medium/font.woff2') format('woff2'),
+    url('./webfonts/Gilroy-Medium/font.woff') format('woff');
+}
