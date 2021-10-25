@@ -40,7 +40,8 @@ void readCmd(){
     }else if(strcmp(receivedChars, "4") == 0){
             RPiSerial.println("<4>");
             // toggle the stream
-            STREAM_DATA_PY = STREAM_DATA_PY ? false : true;
+            //STREAM_DATA_PY = STREAM_DATA_PY ? false : true;
+            STREAM_DATA_PY = true;
             STREAM_DATA_ELAPSED = 0;
             return;
     }else if(strcmp(receivedChars, "5") == 0){
@@ -60,6 +61,13 @@ void readCmd(){
             // Danger!
             deleteAllFilesOnSD();
             newFile();
+            return;
+    }else if(strcmp(receivedChars, "8") == 0){
+            RPiSerial.println("<8>");
+            // toggle the stream
+            //STREAM_DATA_PY = STREAM_DATA_PY ? false : true;
+            STREAM_DATA_PY = false;
+            STREAM_DATA_ELAPSED = 0;
             return;
     }else{
         RPiSerial.print("$$ uC Didn't read cmd properly: ");
