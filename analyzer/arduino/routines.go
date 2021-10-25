@@ -140,12 +140,8 @@ FileLoop:
 					buf := make([]byte, 8192)
 					nr, err = arduino.Read(buf)
 					if err != nil {
-						logrus.Error(err)
-						return
-					}
-					if err != nil {
 						if err == io.EOF {
-							break
+							break readLoop
 						}
 					}
 
