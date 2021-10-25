@@ -23,13 +23,9 @@ jobs:
       run: ssh-keyscan -H thanksgiving.dinnen.engineering >> ~/.ssh/known_hosts
     - name: Stop Pi
       run: ssh pi@thanksgiving.dinnen.engineering "sudo systemctl stop analyzer"
-    # - name: Build Arduino
-    #   run: |
-    #     curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | sh
-    #     export PATH=$PATH:$PWD/bin
-    #     arduino-cli config init
-    #     arduino-cli core update-index
-    #     arduino-cli core install arduino:avr
+    - name: Build Arduino
+      run: |
+        ssh pi@thanksgiving.dinnen.engineering "cd /home/pi/Thanksgiving_Intranet/Arduino_Software; make"
     - name: Build Analyzer
       run: |
         cd analyzer
