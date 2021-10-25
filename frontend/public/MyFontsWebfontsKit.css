@@ -27,8 +27,6 @@
 */
 
 /* @import must be at top of file, otherwise CSS will not work */
-@import url('//hello.myfonts.net/count/3b9566');
-
 @font-face {
   font-family: 'Gilroy-Regular';
   src: url('./webfonts/Gilroy-Regular/font.woff2') format('woff2'),
