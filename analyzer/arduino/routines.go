@@ -185,7 +185,7 @@ FileLoop:
 		<-done
 		_, err = db.Exec("INSERT INTO historical_files (name) VALUES (?);", file)
 		if err != nil {
-			logrus.Errorf("failed to mark %s as read", file)
+			logrus.Errorf("failed to mark %s as read: %s", file, err.Error())
 		}
 		logrus.Info(file, " loaded into database")
 	}
