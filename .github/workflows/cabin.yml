@@ -80,7 +80,7 @@ jobs:
 
   build_frontend:
     needs: [changes, halt_system]
-    if: ${{ needs.changes.outputs.analyzer == 'true' }}
+    if: ${{ needs.changes.outputs.frontend == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
