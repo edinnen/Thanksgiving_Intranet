@@ -24,6 +24,7 @@ jobs:
     - name: Build Analyzer
       run: |
         cd analyzer
+        export PATH=$PATH:$(go env GOPATH)/bin
         make compile
         ssh pi@thanksgiving.dinnen.engineering "sudo systemctl stop analyzer"
         rsync -z --progress ./build/analyzer-linux-arm-5 pi@thanksgiving.dinnen.engineering:~/go/bin/analyzer
