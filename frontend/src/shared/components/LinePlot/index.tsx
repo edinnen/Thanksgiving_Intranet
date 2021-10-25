@@ -15,17 +15,15 @@ import { Fonts } from '../../constants/AppEnums';
 interface LineChartParams {
   data: any[]
   title: string;
-  primaryKey: string;
-  secondaryKey?: string;
-  tertiaryKey?: string;
-  quatrinaryKey?: string;
-  primaryColor: string;
-  secondaryColor?: string;
-  tertiaryColor?: string;
-  quatrinaryColor?: string;
+  lines: LineConfig[];
 }
 
-const LinePlot: React.FC<LineChartParams> = ({ data, title, primaryKey, secondaryKey, tertiaryKey, quatrinaryKey, primaryColor, secondaryColor, tertiaryColor, quatrinaryColor }) => {
+export interface LineConfig {
+  key: string;
+  color: string;
+}
+
+const LinePlot: React.FC<LineChartParams> = ({ data, title, lines }) => {
   return (
     <Box py={{ xs: 5, sm: 5, xl: 5 }} px={{ xs: 6, sm: 6, xl: 6 }} height='1' clone>
       <Card>
@@ -49,34 +47,16 @@ const LinePlot: React.FC<LineChartParams> = ({ data, title, primaryKey, secondar
             <Tooltip />
             <Legend />
             <CartesianGrid stroke='#eee' horizontal={true} vertical={true} />
-            <Line
-              type='monotone'
-              dataKey={primaryKey}
-              stroke={primaryColor}
-              strokeWidth={5}
-              isAnimationActive={false}
-            />
-            {secondaryColor && secondaryKey ? <Line
-              type='monotone'
-              dataKey={secondaryKey}
-              stroke={secondaryColor}
-              strokeWidth={5}
-              isAnimationActive={false}
-            /> : ""}
-            {tertiaryColor && tertiaryKey ? <Line
-              type='monotone'
-              dataKey={tertiaryKey}
-              stroke={tertiaryColor}
-              strokeWidth={5}
-              isAnimationActive={false}
-            /> : ""}
-            {quatrinaryColor && quatrinaryKey ? <Line
-              type='monotone'
-              dataKey={quatrinaryKey}
-              stroke={quatrinaryColor}
-              strokeWidth={5}
-              isAnimationActive={false}
-            /> : ""}
+            {lines.map(({ key, color }) => (
+              <Line
+                type='monotone'
+                key={key}
+                dataKey={key}
+                stroke={color}
+                strokeWidth={5}
+                isAnimationActive={false}
+              />
+            ))}
           </LineChart>
         </ResponsiveContainer>
       </Card>

@@ -6,7 +6,7 @@ import GridContainer from '../../../@crema/core/GridContainer';
 import Grid from '@material-ui/core/Grid';
 import TemperatureCard from '../../../@crema/core/TemperatureCard';
 import PercentageCard from '../../../@crema/core/PercentageCard';
-import LinePlot from '../../../shared/components/LinePlot';
+import LinePlot, { LineConfig } from '../../../shared/components/LinePlot';
 
 export interface Reading {
     timestamp: Date
@@ -53,8 +53,8 @@ function Live() {
 
     const date = `${timestamp.getFullYear()}-${(timestamp.getMonth() + 1)}-${timestamp.getDate()} ${timestamp.getHours()}:${timestamp.getMinutes()}:${timestamp.getSeconds()}`;
     const maxTimeInterval = isMobile ? 15 : 45;
-    const voltAmpData = createLineData(date, reading, 'solar_voltage', 'battery_voltage', 'load_amperage');
-    const powerData = createLineData(date, reading, 'avg_battery_power', 'avg_load_power');
+    const voltAmpData = createLineData(date, reading, 'solar_voltage', 'battery_voltage', 'load_amperage', 'battery_amperage', 'solar_amperage');
+    const powerData = createLineData(date, reading, 'avg_load_power', 'avg_solar_power', 'avg_hydro_power');
     let newVoltAmpData = [...readings.voltAmpData, voltAmpData];
     let newPowerData = [...readings.powerData, powerData];
 
@@ -76,6 +76,20 @@ function Live() {
   const { lastReading, voltAmpData, powerData } = readings;
   if (!lastReading) return <div />;
 
+  const voltAmpLineConfig: LineConfig[] = [
+    { key: "solar_voltage", color: "#8884d8" },
+    { key: "battery_voltage", color: "#82ca9d" },
+    { key: "load_amperage", color: "#0698ec" },
+    { key: "battery_amperage", color: "#85cf2e" },
+    { key: "solar_amperage", color: "#42fa24" },
+  ];
+
+  const powerLineConfig: LineConfig[] = [
+    { key: "avg_solar_power", color: "#f44d50" },
+    { key: "avg_load_power", color: "#82ca9d" },
+    { key: "avg_hydro_power", color: "#0698ec" },
+  ];
+
   return (
     <>
       <Box pt={{ xl: 4 }}>
@@ -93,10 +107,10 @@ function Live() {
             <TemperatureCard temperature={lastReading.battery_temp} title="Battery Temperature" color={blue[600]} />
           </Grid>
           <Grid item xs={12}>
-            <LinePlot title="Voltage and Amperage" data={voltAmpData} primaryKey="solar_voltage" secondaryKey="battery_voltage" tertiaryKey="load_amperage" primaryColor="#8884d8" secondaryColor="#82ca9d" tertiaryColor="#0698ec" />
+            <LinePlot title="Voltage and Amperage" data={voltAmpData} lines={voltAmpLineConfig} />
           </Grid>
           <Grid item xs={12}>
-            <LinePlot title="Average Power" data={powerData} primaryKey="avg_battery_power" secondaryKey="avg_load_power" primaryColor="#f44d50" secondaryColor="#0698ec" /> 
+            <LinePlot title="Average Power" data={powerData} lines={powerLineConfig} /> 
           </Grid>
         </GridContainer>
       </Box>

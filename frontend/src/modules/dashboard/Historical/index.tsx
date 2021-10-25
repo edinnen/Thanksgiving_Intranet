@@ -6,14 +6,13 @@ import { teal, indigo, blue } from '@material-ui/core/colors';
 import { Box } from '@material-ui/core';
 import GridContainer from '../../../@crema/core/GridContainer';
 import Grid from '@material-ui/core/Grid';
-import LinePlot from '../../../shared/components/LinePlot';
+import LinePlot, { LineConfig } from '../../../shared/components/LinePlot';
 import { Reading } from '../../../types/models/Power';
 import { AppState } from '../../../redux/store';
 import { DateTimePicker } from "@material-ui/pickers";
 import moment from 'moment';
 import ValueCard from 'shared/components/ValueCard';
 import { averageNumber, createLineData } from 'utils';
-import PercentageCard from '../../../@crema/core/PercentageCard';
 import TemperatureCard from '../../../@crema/core/TemperatureCard';
 import MenuItem from '@material-ui/core/MenuItem';
 import FormControl from '@material-ui/core/FormControl';
@@ -50,9 +49,8 @@ function Historical() {
 
   useEffect(() => {
     const unix = (date: moment.Moment) => Math.floor(date.valueOf() / 1000);
-    const to: any = moment(from).add(period.value, period.type);
-    console.log(from, to);
-    dispatch(getHistoricalData(unix(from), unix(to)));
+    const to: any = moment(from).subtract(period.value, period.type);
+    dispatch(getHistoricalData(unix(to), unix(from)));
   }, [dispatch, from, period]);
 
   const { historicalData } = useSelector<AppState, AppState['dashboard']>(
@@ -113,8 +111,8 @@ function Historical() {
     let { timestamp } = reading;
     timestamp = new Date(timestamp);
     const date = `${timestamp.getFullYear()}-${(timestamp.getMonth() + 1)}-${timestamp.getDate()} ${timestamp.getHours()}:${timestamp.getMinutes()}:${timestamp.getSeconds()}`;
-    voltAmpData.push(createLineData(date, reading, 'solar_voltage', 'battery_voltage', 'load_amperage'));
-    powerData.push(createLineData(date, reading, 'avg_battery_power', 'avg_load_power'));
+    voltAmpData.push(createLineData(date, reading, 'solar_voltage', 'battery_voltage', 'load_amperage', 'battery_amperage', 'solar_amperage'));
+    powerData.push(createLineData(date, reading, 'avg_load_power', 'avg_solar_power', 'avg_hydro_power'));
     return null;
   });
 
@@ -130,17 +128,35 @@ function Historical() {
 
   const avgBatteryTemp = getAverage(historicalData, "battery_temp");
 
-  const avgBatteryPercent = getAverage(historicalData, "battery_percent");
-
   const avgSolarV = getAverage(historicalData, "solar_voltage");
 
   const avgBatteryV = getAverage(historicalData, "battery_voltage");
 
   const avgLoadA = getAverage(historicalData, "load_amperage");
+  
+  const avgBatteryA = getAverage(historicalData, "battery_amperage");
 
-  const avgBatteryP = getAverage(historicalData, "avg_battery_power");
+  const avgSolarA = getAverage(historicalData, "solar_average");
 
   const avgLoadP = getAverage(historicalData, "avg_load_power");
+
+  const avgSolarP = getAverage(historicalData, "avg_solar_power");
+
+  const avgHydroP = getAverage(historicalData, "avg_hydro_power");
+
+  const voltAmpLineConfig: LineConfig[] = [
+    { key: "solar_voltage", color: "#8884d8" },
+    { key: "battery_voltage", color: "#82ca9d" },
+    { key: "load_amperage", color: "#0698ec" },
+    { key: "battery_amperage", color: "#85cf2e" },
+    { key: "solar_amperage", color: "#42fa24" },
+  ];
+
+  const powerLineConfig: LineConfig[] = [
+    { key: "avg_solar_power", color: "#f44d50" },
+    { key: "avg_load_power", color: "#82ca9d" },
+    { key: "avg_hydro_power", color: "#0698ec" },
+  ];
 
   return (
     <>
@@ -154,9 +170,6 @@ function Historical() {
         {periodSelector}
         <h1>Averages over the period</h1>
         <GridContainer>
-          <Grid item xs={12} md={3}>
-            <PercentageCard percentage={avgBatteryPercent} title="Battery Charge" />
-          </Grid>
           <Grid item xs={6} md={3}>
             <TemperatureCard temperature={avgCabinTemp} title="Cabin Temperature" color={teal[500]} />
           </Grid>
@@ -176,18 +189,27 @@ function Historical() {
             <ValueCard value={avgLoadA} title="Load Amperage" color={teal[500]} />
           </Grid>
           <Grid item xs={6} md={3}>
-            <ValueCard value={avgBatteryP} title="Battery Power" color={teal[500]} />
+            <ValueCard value={avgBatteryA} title="Battery Amperage" color={teal[500]} />
+          </Grid>
+          <Grid item xs={6} md={3}>
+            <ValueCard value={avgSolarA} title="Solar Amperage" color={teal[500]} />
           </Grid>
           <Grid item xs={6} md={3}>
             <ValueCard value={avgLoadP} title="Load Power" color={teal[500]} />
           </Grid>
+          <Grid item xs={6} md={3}>
+            <ValueCard value={avgSolarP} title="Solar Power" color={teal[500]} />
+          </Grid>
+          <Grid item xs={6} md={3}>
+            <ValueCard value={avgHydroP} title="Hydro Power" color={teal[500]} />
+          </Grid>
         </GridContainer>
         <GridContainer>
           <Grid item xs={12}>
-            <LinePlot title="Voltage and Amperage" data={voltAmpData} primaryKey="solar_voltage" secondaryKey="battery_voltage" tertiaryKey="load_amperage" primaryColor="#8884d8" secondaryColor="#82ca9d" tertiaryColor="#0698ec" />
+            <LinePlot title="Voltage and Amperage" data={voltAmpData} lines={voltAmpLineConfig} />
           </Grid>
           <Grid item xs={12}>
-            <LinePlot title="Average Power" data={powerData} primaryKey="avg_battery_power" secondaryKey="avg_load_power" primaryColor="#f44d50" secondaryColor="#0698ec" />
+            <LinePlot title="Average Power" data={powerData} lines={powerLineConfig} /> 
           </Grid>
         </GridContainer>
       </Box>
