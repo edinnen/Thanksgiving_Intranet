@@ -6,11 +6,12 @@ This software goes along with an Arduino based datalogging system which can
 track power and temMperature data to an SD card. 
 
 Developed by Stuart de Haas along with help from many great people. Specific 
-thanks to Stuart Taylor. Hey Stuart!
+thanks to Stuart Taylor and Ethan Dinnen.
 
 Created: October, 2017
 First kinda working version: 22 July, 2018
-Last Modified: 28 Dec, 2020
+Actually working version V1.0: 28 Dec 2020
+Last Modified: Oct, 2021
 
 Good things take time. Be patient.
 */
@@ -38,14 +39,14 @@ Good things take time. Be patient.
 #define DEBUG_SPEEDUP_TIME 0
 
 // Comment out to use actual sensors
-//#define DEBUG_SENSORS
+#define DEBUG_SENSORS
 
 // Comment out line to disable RPi Serial communication
 #define RPI_ENABLE 
 
 // Debug macro. If DEBUG is defined, debug functions will be replaced with
 //output to the USB serial. Otherwise they will be skipped.
-#define DEBUG 
+//#define DEBUG 
 
 #ifdef DEBUG
 #define debug_print(x)   \
