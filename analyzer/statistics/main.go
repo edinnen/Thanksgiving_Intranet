@@ -67,11 +67,13 @@ func (stats *Engine) DetectStreamAnomalies() {
 		bvAnomalies := batteryVoltageAnomalies(stats.readings, stats.timeRange)
 		svAnomalies := solarVoltageAnomalies(stats.readings, stats.timeRange)
 		baAnomalies := batteryAmperageAnomalies(stats.readings, stats.timeRange)
+		saAnomalies := solarAmperageAnomalies(stats.readings, stats.timeRange)
 		laAnomalies := loadAmperageAnomalies(stats.readings, stats.timeRange)
 		btAnomalies := batteryTempAnomalies(stats.readings, stats.timeRange)
 		bvAnomalies.SendToDB(stats.db, stats.mutex)
 		svAnomalies.SendToDB(stats.db, stats.mutex)
 		baAnomalies.SendToDB(stats.db, stats.mutex)
+		saAnomalies.SendToDB(stats.db, stats.mutex)
 		laAnomalies.SendToDB(stats.db, stats.mutex)
 		btAnomalies.SendToDB(stats.db, stats.mutex)
 	}
@@ -98,7 +100,12 @@ func computeAnomalous(field string, readings []models.CabinReading, values []big
 			return models.Anomalies{}
 		}
 
-		anomaly, _ := anomalyDetector.EventIsAnomalous(*big.NewFloat(value.(float64)), big.NewFloat(0.001))
+		event := *big.NewFloat(value.(float64))
+		if event == *big.NewFloat(0) {
+			continue
+		}
+
+		anomaly, _ := anomalyDetector.EventIsAnomalous(event, big.NewFloat(0.001))
 		if anomaly {
 			anomalous = append(anomalous, reading)
 			logrus.Infof("Found anomalous value %v for %s", value, field)
@@ -110,10 +117,19 @@ func computeAnomalous(field string, readings []models.CabinReading, values []big
 	}
 }
 
+func appendIfNotZero(values []big.Float, new float64) []big.Float {
+	if new == 0 {
+		return values
+	}
+
+	res := append(values, *big.NewFloat(new))
+	return res
+}
+
 func batteryVoltageAnomalies(readings []models.CabinReading, tsRange TimeRange) (anomalies models.Anomalies) {
 	var values []big.Float
 	for _, reading := range readings {
-		values = append(values, *big.NewFloat(reading.BatteryVoltage))
+		values = appendIfNotZero(values, reading.BatteryVoltage)
 	}
 
 	anomalies = computeAnomalous("BatteryVoltage", readings, values, tsRange)
@@ -123,7 +139,7 @@ func batteryVoltageAnomalies(readings []models.CabinReading, tsRange TimeRange) 
 func solarVoltageAnomalies(readings []models.CabinReading, tsRange TimeRange) (anomalies models.Anomalies) {
 	var values []big.Float
 	for _, reading := range readings {
-		values = append(values, *big.NewFloat(reading.SolarVoltage))
+		values = appendIfNotZero(values, reading.SolarVoltage)
 	}
 
 	anomalies = computeAnomalous("SolarVoltage", readings, values, tsRange)
@@ -133,17 +149,27 @@ func solarVoltageAnomalies(readings []models.CabinReading, tsRange TimeRange) (a
 func batteryAmperageAnomalies(readings []models.CabinReading, tsRange TimeRange) (anomalies models.Anomalies) {
 	var values []big.Float
 	for _, reading := range readings {
-		values = append(values, *big.NewFloat(reading.BatteryAmperage))
+		values = appendIfNotZero(values, reading.BatteryAmperage)
 	}
 
 	anomalies = computeAnomalous("BatteryAmperage", readings, values, tsRange)
 	return
 }
 
+func solarAmperageAnomalies(readings []models.CabinReading, tsRange TimeRange) (anomalies models.Anomalies) {
+	var values []big.Float
+	for _, reading := range readings {
+		values = appendIfNotZero(values, reading.SolarAmperage)
+	}
+
+	anomalies = computeAnomalous("SolarAmperage", readings, values, tsRange)
+	return
+}
+
 func loadAmperageAnomalies(readings []models.CabinReading, tsRange TimeRange) (anomalies models.Anomalies) {
 	var values []big.Float
 	for _, reading := range readings {
-		values = append(values, *big.NewFloat(reading.LoadAmperage))
+		values = appendIfNotZero(values, reading.LoadAmperage)
 	}
 
 	anomalies = computeAnomalous("LoadAmperage", readings, values, tsRange)
@@ -153,7 +179,7 @@ func loadAmperageAnomalies(readings []models.CabinReading, tsRange TimeRange) (a
 func batteryTempAnomalies(readings []models.CabinReading, tsRange TimeRange) (anomalies models.Anomalies) {
 	var values []big.Float
 	for _, reading := range readings {
-		values = append(values, *big.NewFloat(reading.BatteryTemp))
+		values = appendIfNotZero(values, reading.BatteryTemp)
 	}
 
 	anomalies = computeAnomalous("BatteryTemp", readings, values, tsRange)
