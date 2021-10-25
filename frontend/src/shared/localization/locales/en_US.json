@@ -383,6 +383,7 @@
   "sidebar.app.dashboard.crypto": "Crypto",
   "sidebar.app.dashboard.live": "Live",
   "sidebar.app.dashboard.historical": "Historical",
+  "sidebar.app.dashboard.logbook": "Logbook",
   "sidebar.app.metrics": "Metrics",
   "sidebar.app.widgets": "Widgets",
   "sidebar.apps": "Apps",

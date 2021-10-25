@@ -19,4 +19,13 @@ export const dashBoardConfigs = [
       },
     ],
   },
+  {
+    auth: [],
+    routes: [
+      {
+        path: '/log',
+        component: React.lazy(() => import('./Log')),
+      },
+    ],
+  },
 ];

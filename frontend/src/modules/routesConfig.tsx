@@ -33,6 +33,14 @@ const routesConfig: NavItemProps[] = [
         icon: 'history',
         url: '/historical',
       },
+      {
+        id: 'log',
+        title: 'Logbook',
+        messageId: 'sidebar.app.dashboard.logbook',
+        type: 'item',
+        icon: 'auto_stories',
+        url: '/log',
+      },
     ],
   },
 ];
