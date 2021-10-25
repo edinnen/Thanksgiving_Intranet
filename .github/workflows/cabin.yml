@@ -27,7 +27,7 @@ jobs:
             - 'Arduino_Software/**'
 
   halt_system:
-    needs: [changes, halt_system]
+    needs: changes
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
