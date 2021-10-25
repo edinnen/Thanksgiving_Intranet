@@ -121,8 +121,8 @@ const UserSignin: React.FC<UserSigninProps> = (props) => {
         <Formik
           validateOnChange={true}
           initialValues={{
-            email: 'ethanjdinnen@gmail.com',
-            password: 'chigau',
+            email: 'admin@thanksgiving.cabin',
+            password: 'password',
           }}
           validationSchema={validationSchema}
           onSubmit={(data, {setSubmitting}) => {
