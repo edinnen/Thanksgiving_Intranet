@@ -12,6 +12,7 @@ import (
 
 	"github.com/edinnen/Thanksgiving_Intranet/analyzer/models"
 	"github.com/edinnen/Thanksgiving_Intranet/analyzer/utils"
+	"github.com/jmoiron/sqlx"
 	"github.com/sirupsen/logrus"
 )
 
@@ -68,24 +69,37 @@ func (arduino Connection) StreamData(ctx context.Context, dataStream chan models
 // CancelStreaming sends a <8> command to the Arduino
 // and disregards the response to toggle data streaming before shutdown.
 func (arduino Connection) CancelStreaming(ctx context.Context) {
-	cmd := fmt.Sprintf("<8>") // Format our command for serial
-	arduino.Write(cmd)
+	arduino.Write("<8>")
 }
 
 // SendHistoricalToDB requests historical data to be streamed to us via serial.
 // When a data point is read it is sent to the database.
 // All historical files are commanded to be deleted off of
 // the Arduino upon stream completion.
-func (arduino Connection) SendHistoricalToDB(ctx context.Context, dataStream chan models.CabinReading) error {
+func (arduino Connection) SendHistoricalToDB(ctx context.Context, dataStream chan models.CabinReading, db *sqlx.DB) error {
 	// Get file locations from arduino
 	files, err := arduino.listRootDirectory(ctx)
 	if err != nil {
 		return err
 	}
 	// loop over files
+FileLoop:
 	for _, file := range files {
 		success := make(chan bool, 1) // Create an execution blocker
 		done := make(chan bool, 1)
+
+		rows, err := db.Query("SELECT name FROM historical_files WHERE name = ?;", file)
+		if err != nil {
+			logrus.Fatal(err)
+		}
+		for rows.Next() {
+			var name string
+			rows.Scan(&name)
+			if name != "" {
+				logrus.Debugf("Skipping download of %s. Already recieved.", name)
+				continue FileLoop
+			}
+		}
 
 		// Continually listen for the command response while we send the command
 		go func() {
@@ -144,7 +158,7 @@ func (arduino Connection) SendHistoricalToDB(ctx context.Context, dataStream cha
 				}
 			}
 
-			lines := strings.Split(file, "\n")
+			lines := strings.Split(strings.ReplaceAll(file, "\r", ""), "\n")
 			for _, line := range lines {
 				if strings.Contains(line, "#") {
 					continue
@@ -169,6 +183,10 @@ func (arduino Connection) SendHistoricalToDB(ctx context.Context, dataStream cha
 		logrus.Debugf("Requesting %s", file)
 		arduino.Write("<" + file + ">")
 		<-done
+		_, err = db.Exec("INSERT INTO historical_files (name) VALUES (?);", file)
+		if err != nil {
+			logrus.Errorf("failed to mark %s as read", file)
+		}
 		logrus.Info(file, " loaded into database")
 	}
 	return err
@@ -178,7 +196,7 @@ func (arduino Connection) SendHistoricalToDB(ctx context.Context, dataStream cha
 func (arduino Connection) SyncSystemTime(ctx context.Context) error {
 	success := arduino.Command(ctx, 5)
 	if !success {
-		return fmt.Errorf("Failed to obtain response from command <5>")
+		return fmt.Errorf("failed to obtain response from command <5>")
 	}
 
 	line, err := arduino.ReadLine(ctx, true)

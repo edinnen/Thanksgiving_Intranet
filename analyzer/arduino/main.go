@@ -74,7 +74,7 @@ func NewConnection(ctx context.Context, db *sqlx.DB, mutex *sync.Mutex) (Connect
 			return connection, nil
 		}
 
-		return Connection{}, fmt.Errorf("Failed to recieve hello response back")
+		return Connection{}, fmt.Errorf("failed to recieve hello response back")
 	}
 
 	panic("Failed to connect to any TTY")
@@ -147,7 +147,7 @@ func (arduino Connection) readCommand(ctx context.Context, command int) error {
 			return nil
 		}
 
-		return fmt.Errorf("Failed to read command response")
+		return fmt.Errorf("failed to read command response")
 	}
 }
 
@@ -171,7 +171,7 @@ func (arduino Connection) ReadLine(ctx context.Context, enableTimeout bool) (lin
 			return
 		default:
 			if enableTimeout && time.Now().After(timer) {
-				return "", fmt.Errorf("Request timed out")
+				return "", fmt.Errorf("request timed out")
 			}
 			// Read from the serial buffer
 			var buf = make([]byte, 8192)
@@ -188,7 +188,7 @@ func (arduino Connection) ReadLine(ctx context.Context, enableTimeout bool) (lin
 			wholeError := regexp.MustCompile(`.*\$\$(.*?)\$\$.*`)
 			if wholeError.MatchString(value) {
 				line = ""
-				err = fmt.Errorf("Error from Arduino: %s", strings.TrimSpace(wholeError.FindStringSubmatch(value)[1]))
+				err = fmt.Errorf("error from Arduino: %s", strings.TrimSpace(wholeError.FindStringSubmatch(value)[1]))
 				return
 			}
 
@@ -205,7 +205,7 @@ func (arduino Connection) ReadLine(ctx context.Context, enableTimeout bool) (lin
 			errorEnd := regexp.MustCompile(`(.*?)\$\$.*`)
 			if capturingErr && errorEnd.MatchString(value) {
 				capturingErr = false
-				err = fmt.Errorf("Error from Arduino: %s", strings.TrimSpace(line+errorEnd.FindStringSubmatch(value)[1]))
+				err = fmt.Errorf("error from Arduino: %s", strings.TrimSpace(line+errorEnd.FindStringSubmatch(value)[1]))
 				line = ""
 				return
 			}
