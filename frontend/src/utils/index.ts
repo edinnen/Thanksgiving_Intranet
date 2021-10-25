@@ -1,5 +1,6 @@
 export * from './users';
 export * from './historical';
+export * from './logbook';
 
 export function createLineData(date: string, reading: { [key: string]: any }, primaryKey: string, secondaryKey?: string, tertiaryKey?: string): any {
     const line: any = { date, };

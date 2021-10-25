@@ -35,6 +35,7 @@ func NewConnection(databasePath *string) (db *sqlx.DB, mutex *sync.Mutex) {
 	ensureAnomaliesTable(db)
 	ensureAnomaliesUsersTable(db)
 	ensureHistoricalTable(db)
+	ensureLogbookTable(db)
 	return
 }
 
@@ -42,6 +43,14 @@ func enableForeignKeys(db *sqlx.DB) {
 	logrus.Info("Enabling database foreign keys...")
 	foreignKeySchema := `PRAGMA foreign_keys = ON;`
 	_, err := db.Exec(foreignKeySchema)
+	if err != nil {
+		panic(err)
+	}
+}
+
+func ensureLogbookTable(db *sqlx.DB) {
+	schema := `CREATE TABLE IF NOT EXISTS logbook (author TEXT, body TEXT, created TIMESTAMP DEFAULT CURRENT_TIMESTAMP);`
+	_, err := db.Exec(schema)
 	if err != nil {
 		panic(err)
 	}

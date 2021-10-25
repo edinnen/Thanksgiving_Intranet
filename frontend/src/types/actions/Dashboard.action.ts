@@ -4,6 +4,7 @@ import {CRM} from '../models/CRM';
 import {Crypto} from '../models/Crypto';
 import {Widgets} from '../models/Widgets';
 import {Reading} from '../models/Power';
+import {LogEntry} from '../models/LogEntry';
 
 export const GET_ANALYTICS_DATA = 'GET_ANALYTICS_DATA';
 export const GET_CRM_DATA = 'GET_CRM_DATA';
@@ -11,6 +12,7 @@ export const GET_CRYPTO_DATA = 'GET_CRYPTO_DATA';
 export const GET_METRICS_DATA = 'GET_METRICS_DATA';
 export const GET_WIDGETS_DATA = 'GET_WIDGETS_DATA';
 export const GET_HISTORICAL_DATA = 'GET_HISTORICAL_DATA';
+export const GET_ENTRIES_DATA = 'GET_ENTRIES_DATA';
 
 export interface GetAnalyticsAction {
   type: typeof GET_ANALYTICS_DATA;
@@ -42,10 +44,16 @@ export interface GetHistoricalAction {
   payload: Reading[];
 }
 
+export interface GetEntriesAction {
+  type: typeof GET_ENTRIES_DATA;
+  payload: LogEntry[];
+}
+
 export type DashboardActionTypes =
   | GetAnalyticsAction
   | GetCRMAction
   | GetCryptosAction
   | GetMetricsAction
   | GetWidgetsAction
-  | GetHistoricalAction;
+  | GetHistoricalAction
+  | GetEntriesAction;

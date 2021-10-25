@@ -1,7 +1,7 @@
 import axios, {AxiosResponse} from 'axios';
 // import {Reading} from '../types/models/Power';
 
-const historicalApi = axios.create({ baseURL: 'http://thanksgiving.cabin:8080/api/historical', timeout: 5000 });
+const historicalApi = axios.create({ baseURL: 'http://thanksgiving.cabin/api/historical', timeout: 5000 });
 
 export async function getHistorical(from: number, to: number): Promise<AxiosResponse> {
     try {
