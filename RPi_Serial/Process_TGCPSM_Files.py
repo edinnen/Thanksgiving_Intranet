@@ -8,6 +8,7 @@ import os
 import pandas as pd
 import time
 import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
 
 uCFilesFolder = "rawFiles/"
 processedFilesFolder = "processedFiles/"
@@ -185,9 +186,29 @@ def graphTemperatures(df):
    df = df.drop(df[(df.OutsideTemp < -50) | (df.OutsideTemp > 70)].index)
 
    ax = plt.gca()
-   df.plot(kind='line', x='dateTime', y='BoxTemp',    ax=ax)
-   df.plot(kind='line', x='dateTime', y='CabinTemp',   ax=ax)
-   df.plot(kind='line', x='dateTime', y='OutsideTemp', ax=ax)
+   #df.plot(kind='line', x='dateTime', y='BoxTemp',    ax=ax)
+   #df.plot(kind='line', x='dateTime', y='CabinTemp',   ax=ax)
+
+   #print(df.head())
+   df_max  = df.resample('D', on='dateTime', origin='start_day', offset='5h').max()
+   df_min  = df.resample('D', on='dateTime', origin='start_day', offset='5h').min()
+   df_mean = df.resample('D', on='dateTime', origin='start_day', offset='5h').mean()
+   df_mean.reset_index(level=0, inplace=True)
+
+
+
+   df_min.plot(kind='line', x='dateTime', y='OutsideTemp', ax=ax, label='minTemp')
+
+   df_max.plot(kind='line', x='dateTime', y='OutsideTemp', ax=ax, label='maxTemp')
+   df_mean.plot(kind='line', x='dateTime', y='OutsideTemp', ax=ax, label='mean daily temperature')
+
+   #df.plot(kind='line', x='dateTime', y='OutsideTemp', ax=ax, title="Temperatures at Thanksgiving Cabin: Jan - Oct, 2021")
+   ax.xaxis.set_major_formatter(mdates.DateFormatter('%b %d'))
+   plt.title("Temperatures at Thanksgiving Cabin: Jan - Oct, 2021")
+   plt.xlabel("Date")
+   plt.ylabel("Temperature (\N{DEGREE SIGN}C)")
+
+   plt.tight_layout()
    plt.show()
 
 def graphBatt(df):
