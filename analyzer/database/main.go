@@ -20,7 +20,7 @@ func NewConnection(databasePath *string) (db *sqlx.DB, mutex *sync.Mutex) {
 		panic(err)
 	}
 
-	connString := fmt.Sprintf("file:%s?cache=private&mode=rwc", *databasePath)
+	connString := fmt.Sprintf("file:%s?&mode=rwc", *databasePath)
 	sqlite, err := sql.Open("sqlite3", connString)
 	if err != nil {
 		panic(err)
