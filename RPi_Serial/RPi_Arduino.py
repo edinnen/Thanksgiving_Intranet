@@ -6,7 +6,7 @@
 
 #import sys
 #import glob
-import serial
+import serial # pip install pyserial
 import time
 from time import sleep
 import os
