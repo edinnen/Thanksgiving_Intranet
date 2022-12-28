@@ -8,9 +8,8 @@ import os
 import pandas as pd
 import time
 import matplotlib.pyplot as plt
-import matplotlib.dates as mdates
 
-uCFilesFolder = "rawFiles/"
+uCFilesFolder = "output/"
 processedFilesFolder = "processedFiles/"
 
 def findAllOutputFiles():
@@ -19,7 +18,7 @@ def findAllOutputFiles():
         hexTime = int(filename.split('.')[0], 16)
         files.append((hexTime, filename))
     files =  sorted(files, key=lambda tup: tup[0])
-    print(files)
+    #print(files)
     return files
 
 def preProcess():
@@ -28,18 +27,25 @@ def preProcess():
 
     listOfFrames = []
     for _ , f in files:
-        print(f)
         try:
             df = pd.read_csv(uCFilesFolder + f, sep=',', comment='#',
                     header=None, dtype=float,
-                    names = ["Unix", "BattV", "SolarV", "LoadA", "BattA", "SolarA",
-                        "loadPWR", "solarPWR", "hydroPWR",
-                        "OutsideTemp", "CabinTemp", "BoxTemp"])
-        except pd.errors.EmptyDataError:
+                    names = ["Unix", "BattV", "SolarV", "BattA", "LoadA",
+                        "BattPercent", "AveBattPower", "AveLoadPower",
+                        "OutsideTemp", "CabinTemp", "BattTemp"])
+        except (pd.errors.EmptyDataError):
             print("Bad file: " + f)
+            pass
+
         # if no data, skip it
         if len(df.Unix) < 1:
             continue
+
+        # Add a column indicating if the loads are connected
+        if f.find('.ON') != -1:
+            df['LoadsConnected'] = 1
+        else:
+            df['LoadsConnected'] = 0
 
         # Remove any rows with timestamps before ~Jan 2020 or after ~ Jan 2030
         # If the clock is messed up on the uC it will sometimes output funny dates
@@ -101,17 +107,23 @@ def concatFiles():
         try:
             df = pd.read_csv(uCFilesFolder + f, sep=',', comment='#',
                     header=None, dtype=float,
-                    names = ["Unix", "BattV", "SolarV", "LoadA", "BattA", "SolarA",
+                    names = ["Unix", "BattV", "SolarV", "BattA", "LoadA",
                         "BattPercent", "AveBattPower", "AveLoadPower",
-                        "OutsideTemp", "CabinTemp", "BoxTemp"])
-        except pd.errors.EmptyDataError:
+                        "OutsideTemp", "CabinTemp", "BattTemp"])
+        except (pd.errors.EmptyDataError):
             print("Bad file: " + f)
+            pass
+
         # if no data, skip it
         if len(df.Unix) < 1:
             continue
 
         # Add a column indicating if the loads are connected
-        df['LoadsConnected'] = 1 if f.find('.ON') != -1 else 0
+        if f.find('.ON') != -1:
+            df['LoadsConnected'] = 1
+        else:
+            df['LoadsConnected'] = 0
+
         # Remove any rows with timestamps before ~Jan 2020 or after ~ Jan 2030
         # If the clock is messed up on the uC it will sometimes output funny dates
         # This won't remove all the bad data but will help!
@@ -177,60 +189,20 @@ def concateData(Frames):
 
 def graphTemperatures(df):
 
-   #df.plot(kind='scatter', x='dateTime', y='BoxTemp')
-
-
-   # Remove sensor errors
-   df = df.drop(df[(df.BoxTemp < -50) | (df.BoxTemp > 70)].index)
-   df = df.drop(df[(df.CabinTemp < -50) | (df.CabinTemp > 70)].index)
-   df = df.drop(df[(df.OutsideTemp < -50) | (df.OutsideTemp > 70)].index)
+   #df.plot(kind='scatter', x='dateTime', y='BattTemp')
 
    ax = plt.gca()
-   #df.plot(kind='line', x='dateTime', y='BoxTemp',    ax=ax)
-   #df.plot(kind='line', x='dateTime', y='CabinTemp',   ax=ax)
-
-   #print(df.head())
-   df_max  = df.resample('D', on='dateTime', origin='start_day', offset='5h').max()
-   df_min  = df.resample('D', on='dateTime', origin='start_day', offset='5h').min()
-   df_mean = df.resample('D', on='dateTime', origin='start_day', offset='5h').mean()
-   df_mean.reset_index(level=0, inplace=True)
-
-
-
-   df_min.plot(kind='line', x='dateTime', y='OutsideTemp', ax=ax, label='Daily minimum')
-
-   df_max.plot(kind='line', x='dateTime', y='OutsideTemp', ax=ax, label='Daily maximum')
-   df_mean.plot(kind='line', x='dateTime', y='OutsideTemp', ax=ax, label='Daily mean')
-
-   #df.plot(kind='line', x='dateTime', y='OutsideTemp', ax=ax, title="Temperatures at Thanksgiving Cabin: Jan - Oct, 2021")
-   ax.xaxis.set_major_formatter(mdates.DateFormatter('%b %d'))
-   plt.title("Temperatures at Thanksgiving Cabin: Nov 2021 - Nov 2022")
-   plt.xlabel("Date")
-   plt.ylabel("Temperature (\N{DEGREE SIGN}C)")
-
-   plt.tight_layout()
-   plt.show()
-
-def graphBatt(df):
-
-
-   ax = plt.gca()
-   #df.plot(kind='line', x='dateTime', y=['BattV', 'SolarV'], ax=ax)
-   df.plot(kind='line', x='dateTime', y='BattV', ax=ax)
-   df.plot(kind='line', x='dateTime', y=['BattA', 'LoadA', 'SolarA'], ax=ax, secondary_y=True, mark_right=False)
-   ax.set_ylabel("Voltage (V)")
-   ax.right_ax.set_ylabel("Current (A)")
-   ax.set(xlabel="Date, Time",
-           title="Voltage and Current readings at TGC")
+   df.plot(kind='line', x='dateTime', y='BattTemp',    ax=ax)
+   df.plot(kind='line', x='dateTime', y='CabinTemp',   ax=ax)
+   df.plot(kind='line', x='dateTime', y='OutsideTemp', ax=ax)
+   plt.tightlayout()
    plt.show()
 
 def main():
     Frames = preProcess()
-    print("preProcess done")
     #outputProcessedFiles(Frames)
-    outputConcatFile(Frames)
+    #outputConcatFile(Frames)
     graphTemperatures(concateData(Frames))
-    graphBatt(concateData(Frames))
 
 try:
     main()
